@@ -1,5 +1,4 @@
 import "@/app/globals.css"
-import "@/app/main.css"
 import { Toaster } from "@/components/ui/toaster"
 import type React from "react"
 
