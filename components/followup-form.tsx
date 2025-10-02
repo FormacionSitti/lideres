@@ -32,6 +32,15 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
   const [previousAgreements, setPreviousAgreements] = useState("")
   const { toast } = useToast()
 
+  // Filtrar líderes duplicados basándose en el nombre
+  const uniqueLeaders = leaders.reduce((acc: Leader[], current) => {
+    const duplicate = acc.find((item) => item.name === current.name)
+    if (!duplicate) {
+      acc.push(current)
+    }
+    return acc
+  }, [])
+
   // Get the previous followup ID from the URL
   const previousFollowupId =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("previous") : null
@@ -306,7 +315,7 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
                   <SelectValue placeholder="Seleccionar líder" />
                 </SelectTrigger>
                 <SelectContent>
-                  {leaders.map((leader) => (
+                  {uniqueLeaders.map((leader) => (
                     <SelectItem key={leader.id} value={leader.id.toString()}>
                       {leader.name}
                     </SelectItem>

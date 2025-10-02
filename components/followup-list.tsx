@@ -23,6 +23,15 @@ export function FollowupList({ leaders }: FollowupListProps) {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Filtrar líderes duplicados basándose en el nombre
+  const uniqueLeaders = leaders.reduce((acc: Leader[], current) => {
+    const duplicate = acc.find((item) => item.name === current.name)
+    if (!duplicate) {
+      acc.push(current)
+    }
+    return acc
+  }, [])
+
   // Agregar un key para forzar la recarga de datos
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -379,7 +388,7 @@ export function FollowupList({ leaders }: FollowupListProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-lg font-semibold">Historial de Seguimientos</h2>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" size="sm" onClick={refreshData} className="flex items-center">
+          <Button variant="outline" size="sm" onClick={refreshData} className="flex items-center bg-transparent">
             <RefreshCw className="w-4 h-4 mr-2" />
             Actualizar
           </Button>
@@ -406,7 +415,7 @@ export function FollowupList({ leaders }: FollowupListProps) {
             <SelectValue placeholder="Seleccionar líder" />
           </SelectTrigger>
           <SelectContent>
-            {leaders.map((leader) => (
+            {uniqueLeaders.map((leader) => (
               <SelectItem key={leader.id} value={leader.id.toString()}>
                 {leader.name}
               </SelectItem>
