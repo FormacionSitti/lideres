@@ -1,3 +1,4 @@
+import "@/app/main.css"
 import "@/app/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import type React from "react"
