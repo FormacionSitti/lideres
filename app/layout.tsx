@@ -1,4 +1,4 @@
-import "@/styles/globals.css"
+import "@/app/globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import type React from "react"
 
@@ -9,7 +9,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <head>{/* Eliminar el script que expone las variables de entorno */}</head>
       <body>
         {children}
         <Toaster />
