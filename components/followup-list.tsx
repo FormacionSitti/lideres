@@ -122,73 +122,212 @@ export function FollowupList({ leaders }: FollowupListProps) {
     }
   }
 
-  // Función para generar síntesis automática basada en reglas
-  const generateSynthesis = (summary: any) => {
+  const generateExpertCoachAnalysis = (summary: any) => {
     const { leader, totalFollowups, avgRating, followups } = summary
     const plannedFollowups = 10
     const progress = totalFollowups > 0 ? (totalFollowups / plannedFollowups) * 100 : 0
+    const firstName = leader.name.split(" ")[0]
 
-    // Si no hay seguimientos
+    // Variaciones para evitar repeticiones
+    const randomSeed = leader.id % 5
+
     if (totalFollowups === 0) {
-      return "Aún no se registran acompañamientos. Es importante iniciar el proceso para fortalecer el liderazgo, la comunicación y el acompañamiento cercano con el equipo. Cada sesión será una oportunidad para conectar con las necesidades del grupo y guiar desde la empatía y la coherencia."
+      const openings = [
+        `El proceso de acompañamiento con ${firstName} aún no ha iniciado. Cuando comencemos, será una oportunidad valiosa para explorar fortalezas, identificar áreas de desarrollo y construir un plan de crecimiento alineado con su estilo de liderazgo.`,
+        `${firstName} todavía no ha comenzado su proceso de acompañamiento. Al iniciar, podremos trabajar juntos en identificar oportunidades de crecimiento y diseñar estrategias que potencien su liderazgo.`,
+        `No se han registrado sesiones de acompañamiento con ${firstName}. El inicio del proceso permitirá establecer una línea base y co-crear un plan de desarrollo personalizado.`,
+      ]
+      return openings[randomSeed % openings.length]
     }
 
-    let synthesis = ""
+    // Análisis temporal: dividir en fase inicial y reciente
+    const sortedFollowups = [...followups].sort(
+      (a: any, b: any) => new Date(a.followup_date).getTime() - new Date(b.followup_date).getTime(),
+    )
 
-    // Evaluar el nivel de progreso
-    if (progress >= 100) {
-      synthesis +=
-        "Excelente nivel de avance. El líder ha completado sus acompañamientos planificados demostrando compromiso y claridad en el desarrollo del equipo. "
-    } else if (progress >= 70) {
-      synthesis +=
-        "Se observa un avance positivo y sostenido en los acompañamientos. El líder mantiene un tono cercano, promueve la participación y continúa fortaleciendo su estilo de liderazgo. "
-    } else if (progress >= 50) {
-      synthesis +=
-        "Se evidencia compromiso en los acompañamientos realizados. El líder ha dado pasos importantes para fortalecer su rol, y ahora el reto está en mantener la regularidad de los espacios, consolidar aprendizajes y potenciar la comunicación efectiva con el equipo. "
-    } else if (progress >= 30) {
-      synthesis +=
-        "El proceso avanza en su fase inicial. Es clave mantener la constancia en los acompañamientos, promover espacios de escucha activa y enfocarse en construir confianza con el equipo. "
-    } else {
-      synthesis +=
-        "El líder ha iniciado el proceso de acompañamiento. Es fundamental incrementar la frecuencia de las sesiones y enfocarse en establecer una comunicación cercana y efectiva con el equipo. "
-    }
+    const midPoint = Math.floor(sortedFollowups.length / 2)
+    const initialPhase = sortedFollowups.slice(0, Math.max(1, midPoint))
+    const recentPhase = sortedFollowups.slice(Math.max(1, midPoint))
 
-    // Evaluar calificaciones promedio
+    // Análisis por tema: evolución temporal
+    const topicEvolution: { [key: string]: { initial: number[]; recent: number[]; all: number[] } } = {}
+
+    initialPhase.forEach((f: any) => {
+      f.followup_topics.forEach((ft: any) => {
+        const topicName = ft.topics.name
+        if (!topicEvolution[topicName]) {
+          topicEvolution[topicName] = { initial: [], recent: [], all: [] }
+        }
+        topicEvolution[topicName].initial.push(ft.rating)
+        topicEvolution[topicName].all.push(ft.rating)
+      })
+    })
+
+    recentPhase.forEach((f: any) => {
+      f.followup_topics.forEach((ft: any) => {
+        const topicName = ft.topics.name
+        if (!topicEvolution[topicName]) {
+          topicEvolution[topicName] = { initial: [], recent: [], all: [] }
+        }
+        topicEvolution[topicName].recent.push(ft.rating)
+        topicEvolution[topicName].all.push(ft.rating)
+      })
+    })
+
+    const improvements: { topic: string; initialAvg: number; recentAvg: number; improvement: number }[] = []
+    const stagnant: { topic: string; avg: number }[] = []
+    const declining: { topic: string; initialAvg: number; recentAvg: number; decline: number }[] = []
+
+    Object.entries(topicEvolution).forEach(([topic, data]) => {
+      const initialAvg = data.initial.length > 0 ? data.initial.reduce((a, b) => a + b, 0) / data.initial.length : 0
+      const recentAvg =
+        data.recent.length > 0 ? data.recent.reduce((a, b) => a + b, 0) / data.recent.length : initialAvg
+      const overallAvg = data.all.reduce((a, b) => a + b, 0) / data.all.length
+
+      const change = recentAvg - initialAvg
+
+      if (change >= 0.5) {
+        improvements.push({ topic, initialAvg, recentAvg, improvement: change })
+      } else if (change <= -0.5) {
+        declining.push({ topic, initialAvg, recentAvg, decline: Math.abs(change) })
+      } else if (overallAvg < 3.5) {
+        stagnant.push({ topic, avg: overallAvg })
+      }
+    })
+
+    improvements.sort((a, b) => b.improvement - a.improvement)
+    declining.sort((a, b) => b.decline - a.decline)
+    stagnant.sort((a, b) => a.avg - b.avg)
+
+    // Construir análisis con tono profesional pero cercano
+    let analysis = ""
+
+    // 1. CONTEXTO GENERAL
+    const contextOpenings = [
+      `Durante el proceso de acompañamiento, ${firstName} ha completado ${totalFollowups} de ${plannedFollowups} sesiones planificadas. `,
+      `${firstName} lleva ${totalFollowups} sesiones de las ${plannedFollowups} programadas en su proceso de desarrollo. `,
+      `El acompañamiento con ${firstName} registra ${totalFollowups} sesiones realizadas de un total de ${plannedFollowups} planificadas. `,
+    ]
+    analysis += contextOpenings[randomSeed % contextOpenings.length]
+
     const avgNum = Number.parseFloat(avgRating)
     if (!isNaN(avgNum)) {
       if (avgNum >= 4.5) {
-        synthesis +=
-          "Las calificaciones reflejan un desempeño sobresaliente en los temas trabajados, indicando dominio y aplicación efectiva de las competencias de liderazgo. "
+        analysis += `El desempeño general es sobresaliente, con un promedio de ${avgRating}/5 en las competencias trabajadas. `
       } else if (avgNum >= 4.0) {
-        synthesis +=
-          "Las calificaciones demuestran un buen nivel de desarrollo en las áreas trabajadas, con oportunidades para alcanzar la excelencia. "
+        analysis += `Se observa un nivel de desarrollo sólido, reflejado en un promedio de ${avgRating}/5. `
       } else if (avgNum >= 3.5) {
-        synthesis +=
-          "Las calificaciones muestran un nivel satisfactorio, con margen para fortalecer aspectos específicos del liderazgo. "
-      } else if (avgNum >= 3.0) {
-        synthesis +=
-          "Las calificaciones sugieren áreas de mejora importantes. Se recomienda enfocar los próximos acompañamientos en consolidar competencias fundamentales. "
+        analysis += `El progreso es satisfactorio con un promedio de ${avgRating}/5, identificando oportunidades claras de mejora. `
       } else {
-        synthesis +=
-          "Las calificaciones indican la necesidad de un acompañamiento más intensivo para desarrollar las competencias de liderazgo. "
+        analysis += `El promedio actual de ${avgRating}/5 indica áreas importantes que requieren atención y trabajo enfocado. `
       }
     }
 
-    // Sugerencias según el estado
-    if (progress < 100) {
-      if (progress >= 50) {
-        synthesis +=
-          "Se recomienda mantener la consistencia y generar espacios de retroalimentación impacto en los resultados del equipo."
+    // 2. AVANCES EVIDENCIADOS
+    if (improvements.length > 0) {
+      const advanceIntros = [
+        `\n\n**Avances evidenciados:** `,
+        `\n\n**Evolución positiva:** `,
+        `\n\n**Competencias que han mejorado:** `,
+      ]
+      analysis += advanceIntros[randomSeed % advanceIntros.length]
+
+      if (improvements.length === 1) {
+        analysis += `Se registra un avance significativo en ${improvements[0].topic}, pasando de ${improvements[0].initialAvg.toFixed(1)} a ${improvements[0].recentAvg.toFixed(1)}. `
+        analysis += `Este progreso refleja la aplicación consistente de los aprendizajes en la práctica diaria. `
       } else {
-        synthesis +=
-          "Pequeños avances sostenidos consolidarán al liderazgo en el tiempo. Cada sesión es una oportunidad para conectar, aprender y compartir buenas prácticas con otros líderes."
+        analysis += `${firstName} ha mostrado evolución en ${improvements.length} competencias clave. `
+        analysis += `Destaca el avance en ${improvements[0].topic} (de ${improvements[0].initialAvg.toFixed(1)} a ${improvements[0].recentAvg.toFixed(1)})${improvements.length > 1 ? ` y ${improvements[1].topic} (de ${improvements[1].initialAvg.toFixed(1)} a ${improvements[1].recentAvg.toFixed(1)})` : ""}. `
+        analysis += `Estos resultados evidencian compromiso con el proceso y capacidad de integrar nuevas prácticas. `
       }
+    } else if (totalFollowups >= 3) {
+      analysis += `\n\n**Estado actual:** `
+      analysis += `Las competencias trabajadas se mantienen en niveles estables. `
+      analysis += `El siguiente paso es profundizar en la práctica y buscar oportunidades de aplicación en contextos más desafiantes. `
+    }
+
+    // 3. BRECHAS Y OPORTUNIDADES
+    const persistentGaps = stagnant.filter((s) => s.avg < 3.0)
+    const moderateGaps = stagnant.filter((s) => s.avg >= 3.0 && s.avg < 3.5)
+
+    if (persistentGaps.length > 0 || declining.length > 0) {
+      const gapIntros = [
+        `\n\n**Brechas que requieren atención:** `,
+        `\n\n**Áreas de oportunidad prioritarias:** `,
+        `\n\n**Competencias por fortalecer:** `,
+      ]
+      analysis += gapIntros[randomSeed % gapIntros.length]
+
+      if (declining.length > 0) {
+        analysis += `${declining[0].topic} muestra una disminución (de ${declining[0].initialAvg.toFixed(1)} a ${declining[0].recentAvg.toFixed(1)}). `
+        analysis += `Es importante explorar los factores que están influyendo en este retroceso y ajustar el enfoque de trabajo. `
+      }
+
+      if (persistentGaps.length > 0) {
+        if (persistentGaps.length === 1) {
+          analysis += `${persistentGaps[0].topic} (${persistentGaps[0].avg.toFixed(1)}/5) representa una brecha significativa que requiere intervención focalizada. `
+          analysis += `Se recomienda diseñar un plan de acción específico con práctica deliberada y retroalimentación frecuente. `
+        } else {
+          const gapList = persistentGaps
+            .slice(0, 2)
+            .map((g) => `${g.topic} (${g.avg.toFixed(1)}/5)`)
+            .join(" y ")
+          analysis += `${gapList} son competencias que necesitan mayor dedicación y posiblemente un enfoque metodológico diferente. `
+          analysis += `Estas áreas representan oportunidades importantes de desarrollo que impactarán positivamente el liderazgo de ${firstName}. `
+        }
+      }
+    }
+
+    if (moderateGaps.length > 0 && persistentGaps.length === 0 && declining.length === 0) {
+      analysis += `\n\n**Oportunidades de excelencia:** `
+      if (moderateGaps.length === 1) {
+        analysis += `${moderateGaps[0].topic} (${moderateGaps[0].avg.toFixed(1)}/5) tiene potencial para convertirse en una fortaleza distintiva. `
+      } else {
+        const modGapList = moderateGaps
+          .slice(0, 2)
+          .map((g) => `${g.topic} (${g.avg.toFixed(1)}/5)`)
+          .join(" y ")
+        analysis += `${modGapList} están en buen nivel y pueden elevarse con práctica intencional. `
+      }
+      analysis += `Con enfoque estratégico, estas competencias pueden diferenciarse significativamente. `
+    }
+
+    // 4. RECOMENDACIONES ESTRATÉGICAS
+    const recoIntros = [
+      `\n\n**Recomendaciones:** `,
+      `\n\n**Próximos pasos sugeridos:** `,
+      `\n\n**Plan de acción recomendado:** `,
+    ]
+    analysis += recoIntros[randomSeed % recoIntros.length]
+
+    if (progress < 50) {
+      analysis += `Estamos en la fase inicial del proceso (${progress.toFixed(0)}% completado). `
+      if (persistentGaps.length > 0) {
+        analysis += `Priorizar el trabajo en ${persistentGaps[0].topic} en las próximas sesiones, utilizando ejercicios prácticos y casos reales. `
+      } else {
+        analysis += `Mantener la constancia en las sesiones y profundizar en la aplicación práctica de los conceptos trabajados. `
+      }
+      analysis += `Cada sesión construye sobre la anterior, por lo que la regularidad es clave para consolidar aprendizajes. `
+    } else if (progress < 100) {
+      if (improvements.length > 0 && persistentGaps.length > 0) {
+        analysis += `Aprovechar la fortaleza desarrollada en ${improvements[0].topic} como base para trabajar ${persistentGaps[0].topic}. `
+        analysis += `Las competencias que ya dominamos pueden servir como modelo para abordar las que presentan mayor desafío. `
+      }
+      analysis += `En esta fase avanzada (${progress.toFixed(0)}% completado), el foco debe estar en consolidar los aprendizajes y asegurar su transferencia al contexto real de liderazgo. `
     } else {
-      synthesis +=
-        "El siguiente paso es consolidar los aprendizajes y compartir buenas prácticas con otros líderes para fortalecer el liderazgo organizacional."
+      if (avgNum >= 4.0) {
+        analysis += `${firstName} ha alcanzado un nivel de madurez notable en su desarrollo. `
+        analysis += `Se sugiere considerar roles de mentoría o participación en comunidades de práctica para continuar creciendo mientras aporta a otros líderes. `
+      } else if (persistentGaps.length > 0) {
+        analysis += `Aunque se completó el ciclo planificado, ${persistentGaps.map((g) => g.topic).join(", ")} requieren atención adicional. `
+        analysis += `Se recomienda programar 3-4 sesiones complementarias enfocadas específicamente en estas competencias para asegurar la sostenibilidad de los resultados. `
+      } else {
+        analysis += `El ciclo de acompañamiento se ha completado con resultados satisfactorios. `
+        analysis += `Se sugiere establecer sesiones de seguimiento trimestrales para mantener el momentum, abordar nuevos desafíos y continuar el desarrollo del liderazgo. `
+      }
     }
 
-    return synthesis
+    return analysis
   }
 
   const exportWithAnalysis = async () => {
@@ -198,8 +337,8 @@ export function FollowupList({ leaders }: FollowupListProps) {
       const XLSX = await import("xlsx")
 
       toast({
-        title: "Generando análisis...",
-        description: "Procesando datos de los líderes...",
+        title: "Generando análisis de coach...",
+        description: "Evaluando el proceso de cada líder con mirada experta...",
       })
 
       const response = await fetch("/api/supabase", {
@@ -240,7 +379,6 @@ export function FollowupList({ leaders }: FollowupListProps) {
         }
       })
 
-      // Generar síntesis para cada líder
       const reportData = leaderSummary.map((summary) => {
         const plannedFollowups = 10
         const progress =
@@ -253,7 +391,7 @@ export function FollowupList({ leaders }: FollowupListProps) {
           status = "En progreso"
         }
 
-        const synthesis = generateSynthesis(summary)
+        const expertAnalysis = generateExpertCoachAnalysis(summary)
 
         return {
           Líder: summary.leader.name,
@@ -262,19 +400,17 @@ export function FollowupList({ leaders }: FollowupListProps) {
           "% Avance": `${progress}%`,
           Estado: status,
           "Promedio Calificaciones": summary.avgRating,
-          "Síntesis del avance": synthesis,
+          "Análisis del Coach": expertAnalysis,
         }
       })
 
       const wb = XLSX.utils.book_new()
       const ws = XLSX.utils.json_to_sheet(reportData)
 
-      // Ajustar anchos de columna
-      ws["!cols"] = [{ wch: 30 }, { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 120 }]
+      ws["!cols"] = [{ wch: 30 }, { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 150 }]
 
-      XLSX.utils.book_append_sheet(wb, ws, "Análisis de Seguimiento")
+      XLSX.utils.book_append_sheet(wb, ws, "Análisis de Coaching")
 
-      // Generar el archivo como array buffer
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
       const blob = new Blob([wbout], { type: "application/octet-stream" })
 
@@ -282,8 +418,8 @@ export function FollowupList({ leaders }: FollowupListProps) {
       downloadFile(blob, fileName)
 
       toast({
-        title: "Exportación exitosa",
-        description: "El análisis se ha generado correctamente.",
+        title: "Análisis generado",
+        description: "El reporte con la perspectiva del coach está listo.",
       })
     } catch (error) {
       console.error("Error generando análisis:", error)
@@ -459,7 +595,7 @@ export function FollowupList({ leaders }: FollowupListProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: JSON.JSON.stringify({
           action: "getAllFollowupTopics",
         }),
       })

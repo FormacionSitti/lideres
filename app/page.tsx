@@ -4,12 +4,10 @@ import { Layout } from "@/components/layout"
 import { FollowupForm } from "@/components/followup-form"
 import { FollowupList } from "@/components/followup-list"
 import { Toaster } from "@/components/ui/toaster"
-import { supabaseServer } from "@/lib/supabase-server"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { ResetButton } from "@/components/reset-button"
 
-// Add error boundary component
 function ErrorDisplay({ error }: { error: Error }) {
   return (
     <Alert variant="destructive">
@@ -28,7 +26,6 @@ function ErrorDisplay({ error }: { error: Error }) {
   )
 }
 
-// Add loading component
 function LoadingDisplay() {
   return (
     <div className="w-full p-8 text-center">
@@ -39,37 +36,48 @@ function LoadingDisplay() {
 
 async function getLeaders() {
   try {
-    const { data, error } = await supabaseServer.from("leaders").select("id, name").order("name")
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
 
-    if (error) {
-      throw new Error(`Error loading leaders: ${error.message}`)
+    const response = await fetch(`${baseUrl}/api/supabase?action=getLeaders`, {
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Error loading leaders")
     }
 
+    const { data } = await response.json()
     return data || []
   } catch (error) {
-    console.error("Error in getLeaders:", error)
+    console.error("[v0] Error in getLeaders:", error)
     throw error
   }
 }
 
 async function getTopics() {
   try {
-    const { data, error } = await supabaseServer.from("topics").select("id, name").order("name")
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
 
-    if (error) {
-      throw new Error(`Error loading topics: ${error.message}`)
+    const response = await fetch(`${baseUrl}/api/supabase?action=getTopics`, {
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Error loading topics")
     }
 
+    const { data } = await response.json()
     return data || []
   } catch (error) {
-    console.error("Error in getTopics:", error)
+    console.error("[v0] Error in getTopics:", error)
     throw error
   }
 }
 
 async function getData() {
   try {
-    // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Timeout fetching data")), 10000),
     )
