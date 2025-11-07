@@ -1,37 +1,57 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
+
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Faltan variables de entorno de Supabase")
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+}
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const action = searchParams.get("action")
+  try {
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get("action")
 
-  if (action === "getLeaders") {
-    try {
-      const { data, error } = await supabaseServer.from("leaders").select("id, name").order("name")
+    const supabase = getSupabaseClient()
 
-      if (error) throw error
-
-      return NextResponse.json({ data })
-    } catch (error: any) {
-      console.error("Error in getLeaders:", error)
-      return NextResponse.json({ error: error.message, details: error }, { status: 500 })
-    }
-  }
-
-  if (action === "getTopics") {
-    try {
-      const { data, error } = await supabaseServer.from("topics").select("id, name").order("name")
+    if (action === "getLeaders") {
+      const { data, error } = await supabase.from("leaders").select("id, name").order("name")
 
       if (error) throw error
 
       return NextResponse.json({ data })
-    } catch (error: any) {
-      console.error("Error in getTopics:", error)
-      return NextResponse.json({ error: error.message, details: error }, { status: 500 })
     }
-  }
 
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    if (action === "getTopics") {
+      const { data, error } = await supabase.from("topics").select("id, name").order("name")
+
+      if (error) throw error
+
+      return NextResponse.json({ data })
+    }
+
+    return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
+  } catch (error: any) {
+    console.error("Error en API:", error)
+    return NextResponse.json(
+      {
+        error: error.message || "Error desconocido",
+        details: error.toString(),
+      },
+      { status: 500 },
+    )
+  }
 }
 
 export async function POST(request: Request) {
@@ -39,48 +59,38 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { action, data } = body
 
-    console.log("Acción recibida:", action)
-    console.log("Datos recibidos:", data)
+    const supabase = getSupabaseClient()
 
     if (action === "addLeaders") {
       const { leaders } = data
 
-      try {
-        const { data: insertedLeaders, error } = await supabaseServer.from("leaders").insert(leaders).select()
+      const { data: insertedLeaders, error } = await supabase.from("leaders").insert(leaders).select()
 
-        if (error) {
-          // Si el error es por duplicado, intentar uno por uno
-          if (error.code === "23505") {
-            const results = []
-            for (const leader of leaders) {
-              const { data: inserted, error: singleError } = await supabaseServer
-                .from("leaders")
-                .insert([leader])
-                .select()
+      if (error) {
+        if (error.code === "23505") {
+          const results = []
+          for (const leader of leaders) {
+            const { data: inserted, error: singleError } = await supabase.from("leaders").insert([leader]).select()
 
-              if (!singleError) {
-                results.push(inserted[0])
-              }
+            if (!singleError) {
+              results.push(inserted[0])
             }
-
-            return NextResponse.json({
-              success: true,
-              data: results,
-              message: results.length > 0 ? `${results.length} líder(es) agregado(s)` : "Los líderes ya existen",
-            })
           }
-          throw error
-        }
 
-        return NextResponse.json({
-          data: insertedLeaders,
-          success: true,
-          message: `${insertedLeaders.length} líder(es) agregado(s) exitosamente`,
-        })
-      } catch (err: any) {
-        console.error("Error insertando líderes:", err)
-        throw new Error(`Error al insertar líderes: ${err.message}`)
+          return NextResponse.json({
+            success: true,
+            data: results,
+            message: results.length > 0 ? `${results.length} líder(es) agregado(s)` : "Los líderes ya existen",
+          })
+        }
+        throw error
       }
+
+      return NextResponse.json({
+        data: insertedLeaders,
+        success: true,
+        message: `${insertedLeaders.length} líder(es) agregado(s) exitosamente`,
+      })
     }
 
     if (action === "addFollowup") {
@@ -95,7 +105,7 @@ export async function POST(request: Request) {
         previous_followup_id,
       } = data
 
-      const { data: followup, error: followupError } = await supabaseServer
+      const { data: followup, error: followupError } = await supabase
         .from("followups")
         .insert([
           {
@@ -120,7 +130,7 @@ export async function POST(request: Request) {
     if (action === "addTopicRatings") {
       const { followup_id, topicRatings } = data
 
-      const { error: topicsError } = await supabaseServer.from("followup_topics").insert(topicRatings)
+      const { error: topicsError } = await supabase.from("followup_topics").insert(topicRatings)
 
       if (topicsError) throw topicsError
 
@@ -130,7 +140,7 @@ export async function POST(request: Request) {
     if (action === "getFollowups") {
       const { leader_id } = data
 
-      const { data: followups, error } = await supabaseServer
+      const { data: followups, error } = await supabase
         .from("followups")
         .select(`
           id,
@@ -164,7 +174,7 @@ export async function POST(request: Request) {
     if (action === "getPreviousFollowup") {
       const { followup_id } = data
 
-      const { data: followup, error } = await supabaseServer
+      const { data: followup, error } = await supabase
         .from("followups")
         .select(`
           leader_id,
@@ -188,7 +198,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "getAllFollowups") {
-      const { data: followups, error } = await supabaseServer
+      const { data: followups, error } = await supabase
         .from("followups")
         .select(`
           id,
@@ -219,7 +229,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "getAllFollowupTopics") {
-      const { data: followupTopics, error } = await supabaseServer.from("followup_topics").select(`
+      const { data: followupTopics, error } = await supabase.from("followup_topics").select(`
           followup_id,
           topic_id,
           rating
@@ -231,27 +241,24 @@ export async function POST(request: Request) {
     }
 
     if (action === "deleteAllFollowups") {
-      // 1. Primero eliminar los registros de la tabla followup_topics
-      const { error: topicsError } = await supabaseServer.from("followup_topics").delete().neq("rating", -999)
+      const { error: topicsError } = await supabase.from("followup_topics").delete().neq("rating", -999)
 
       if (topicsError) throw topicsError
 
-      // 2. Luego eliminar todos los registros de la tabla followups
-      const { error: followupsError } = await supabaseServer.from("followups").delete().neq("sequence_number", -999)
+      const { error: followupsError } = await supabase.from("followups").delete().neq("sequence_number", -999)
 
       if (followupsError) throw followupsError
 
       return NextResponse.json({ success: true })
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
   } catch (error: any) {
     console.error("Error en API:", error)
     return NextResponse.json(
       {
         error: error.message || "Error desconocido",
-        details: error,
-        stack: error.stack,
+        details: error.toString(),
       },
       { status: 500 },
     )

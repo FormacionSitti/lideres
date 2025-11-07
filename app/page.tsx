@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { ResetButton } from "@/components/reset-button"
+import { createClient } from "@supabase/supabase-js"
 
 function ErrorDisplay({ error }: { error: Error }) {
   return (
@@ -16,7 +17,7 @@ function ErrorDisplay({ error }: { error: Error }) {
       <AlertDescription>
         No se pudieron cargar los datos. Por favor, verifica que:
         <ul className="list-disc list-inside mt-2">
-          <li>Las variables de entorno estén configuradas correctamente</li>
+          <li>Las variables de entorno estén configuradas correctamente en Vercel</li>
           <li>La conexión a Supabase esté funcionando</li>
           <li>Las tablas 'leaders' y 'topics' existan en la base de datos</li>
         </ul>
@@ -34,44 +35,53 @@ function LoadingDisplay() {
   )
 }
 
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error(
+      "Faltan variables de entorno de Supabase. Configura NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.",
+    )
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+}
+
 async function getLeaders() {
   try {
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("leaders").select("id, name").order("name")
 
-    const response = await fetch(`${baseUrl}/api/supabase?action=getLeaders`, {
-      cache: "no-store",
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || "Error loading leaders")
+    if (error) {
+      throw new Error(`Error cargando líderes: ${error.message}`)
     }
 
-    const { data } = await response.json()
     return data || []
   } catch (error) {
-    console.error("[v0] Error in getLeaders:", error)
+    console.error("[v0] Error en getLeaders:", error)
     throw error
   }
 }
 
 async function getTopics() {
   try {
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.from("topics").select("id, name").order("name")
 
-    const response = await fetch(`${baseUrl}/api/supabase?action=getTopics`, {
-      cache: "no-store",
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || "Error loading topics")
+    if (error) {
+      throw new Error(`Error cargando temas: ${error.message}`)
     }
 
-    const { data } = await response.json()
     return data || []
   } catch (error) {
-    console.error("[v0] Error in getTopics:", error)
+    console.error("[v0] Error en getTopics:", error)
     throw error
   }
 }
@@ -79,7 +89,7 @@ async function getTopics() {
 async function getData() {
   try {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout fetching data")), 10000),
+      setTimeout(() => reject(new Error("Timeout obteniendo datos")), 10000),
     )
 
     const dataPromise = Promise.all([getLeaders(), getTopics()])
@@ -88,7 +98,7 @@ async function getData() {
 
     return { leaders, topics }
   } catch (error) {
-    console.error("Error fetching data:", error)
+    console.error("Error obteniendo datos:", error)
     throw error
   }
 }
@@ -128,7 +138,7 @@ export default async function Page() {
   } catch (error) {
     return (
       <Layout>
-        <ErrorDisplay error={error instanceof Error ? error : new Error("Unknown error")} />
+        <ErrorDisplay error={error instanceof Error ? error : new Error("Error desconocido")} />
         <Toaster />
       </Layout>
     )
