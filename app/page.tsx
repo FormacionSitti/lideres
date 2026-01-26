@@ -39,9 +39,22 @@ function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_KEY
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl) {
     throw new Error(
-      "Faltan variables de entorno de Supabase. Configura NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.",
+      "Falta NEXT_PUBLIC_SUPABASE_URL. Configúrala en las variables de entorno de Vercel.",
+    )
+  }
+
+  if (!supabaseKey) {
+    throw new Error(
+      "Falta SUPABASE_KEY. Configúrala en las variables de entorno de Vercel.",
+    )
+  }
+
+  // Validar que la URL tenga formato correcto
+  if (!supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('supabase.in')) {
+    throw new Error(
+      `La URL de Supabase parece incorrecta: ${supabaseUrl}. Debe ser algo como https://tu-proyecto.supabase.co`,
     )
   }
 
@@ -60,11 +73,20 @@ async function getLeaders() {
     const { data, error } = await supabase.from("leaders").select("id, name").order("name")
 
     if (error) {
+      // Verificar si es un error de autenticación
+      if (error.message.includes('Invalid') || error.code === 'PGRST301') {
+        throw new Error(`Error de autenticación con Supabase. Verifica que SUPABASE_KEY sea válida.`)
+      }
       throw new Error(`Error cargando líderes: ${error.message}`)
     }
 
     return data || []
-  } catch (error) {
+  } catch (error: any) {
+    // Si el error contiene "Invalid", es probable un problema de credenciales
+    if (error?.message?.includes('Invalid')) {
+      console.error("[v0] Error de credenciales:", error)
+      throw new Error("Credenciales de Supabase inválidas. Verifica NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.")
+    }
     console.error("[v0] Error en getLeaders:", error)
     throw error
   }
@@ -76,11 +98,18 @@ async function getTopics() {
     const { data, error } = await supabase.from("topics").select("id, name").order("name")
 
     if (error) {
+      if (error.message.includes('Invalid') || error.code === 'PGRST301') {
+        throw new Error(`Error de autenticación con Supabase. Verifica que SUPABASE_KEY sea válida.`)
+      }
       throw new Error(`Error cargando temas: ${error.message}`)
     }
 
     return data || []
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('Invalid')) {
+      console.error("[v0] Error de credenciales:", error)
+      throw new Error("Credenciales de Supabase inválidas. Verifica NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.")
+    }
     console.error("[v0] Error en getTopics:", error)
     throw error
   }
