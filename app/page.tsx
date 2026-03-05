@@ -167,7 +167,7 @@ export default async function Page() {
   <h1 className="text-xl font-semibold">Panel de Seguimientos</h1>
   <div className="flex items-center gap-2">
     
-      href="/plan-desarrollo"
+    href="/plan-desarrollo"
       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
     >
       📋 Plan de Desarrollo
