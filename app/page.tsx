@@ -163,12 +163,18 @@ export default async function Page() {
 
     return (
       <Layout>
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-semibold">Panel de Seguimientos</h1>
-          <div className="flex items-center gap-2">
-            <ResetButton />
-          </div>
-        </div>
+      <div className="flex justify-between items-center mb-6">
+  <h1 className="text-xl font-semibold">Panel de Seguimientos</h1>
+  <div className="flex items-center gap-2">
+    
+      href="/plan-desarrollo"
+      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+    >
+      📋 Plan de Desarrollo
+    </a>
+    <ResetButton />
+  </div>
+</div>
 
         <Tabs defaultValue="new" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
