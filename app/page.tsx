@@ -60,24 +60,17 @@ function LoadingDisplay() {
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_KEY
+  const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl) {
     throw new Error(
-      "Falta NEXT_PUBLIC_SUPABASE_URL. Configúrala en las variables de entorno de Vercel.",
+      "Falta NEXT_PUBLIC_SUPABASE_URL. Configúrala en las variables de entorno.",
     )
   }
 
   if (!supabaseKey) {
     throw new Error(
-      "Falta SUPABASE_KEY. Configúrala en las variables de entorno de Vercel.",
-    )
-  }
-
-  // Validar que la URL tenga formato correcto
-  if (!supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('supabase.in')) {
-    throw new Error(
-      `La URL de Supabase parece incorrecta: ${supabaseUrl}. Debe ser algo como https://tu-proyecto.supabase.co`,
+      "Falta SUPABASE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY. Configúrala en las variables de entorno.",
     )
   }
 
