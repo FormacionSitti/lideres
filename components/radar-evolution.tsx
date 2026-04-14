@@ -38,9 +38,11 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
 
   // Ordenar followups por fecha (más antiguo primero)
   const sortedFollowups = useMemo(() => {
-    return [...followups].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    )
+    return [...followups].sort((a, b) => {
+      const dateA = a.followup_date || a.created_at || ""
+      const dateB = b.followup_date || b.created_at || ""
+      return new Date(dateA).getTime() - new Date(dateB).getTime()
+    })
   }, [followups])
 
   // Calcular datos del radar para cada sesión
@@ -54,14 +56,17 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
         }
       })
 
+      const validData = data.filter((d) => d.value > 0)
+      const average = validData.length > 0 
+        ? data.reduce((sum, d) => sum + d.value, 0) / validData.length 
+        : 0
+
       return {
         sessionNumber: index + 1,
-        date: followup.created_at,
+        date: followup.followup_date || followup.created_at || new Date().toISOString(),
         type: followup.type,
         data,
-        average:
-          data.reduce((sum, d) => sum + d.value, 0) /
-          data.filter((d) => d.value > 0).length || 0,
+        average,
       }
     })
   }, [sortedFollowups])
@@ -147,7 +152,9 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
                 Sesión {currentSession.sessionNumber} de {sessionData.length}
               </p>
               <p className="text-sm text-gray-500">
-                {format(parseISO(currentSession.date), "d 'de' MMMM, yyyy", { locale: es })}
+                {currentSession.date 
+                  ? format(parseISO(currentSession.date), "d 'de' MMMM, yyyy", { locale: es })
+                  : "Fecha no disponible"}
               </p>
               <p className="text-xs text-gray-400 capitalize">{currentSession.type}</p>
             </div>
@@ -276,7 +283,9 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
             >
               <p className="font-medium text-sm">Sesión {session.sessionNumber}</p>
               <p className="text-xs text-gray-500">
-                {format(parseISO(session.date), "dd/MM/yy", { locale: es })}
+                {session.date 
+                  ? format(parseISO(session.date), "dd/MM/yy", { locale: es })
+                  : "-"}
               </p>
               <p
                 className={`text-xs font-medium mt-1 ${
