@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format, differenceInDays, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText } from "lucide-react"
+import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type { Leader, Followup } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
+import { RadarChart } from "@/components/radar-chart"
+import { CoachingInterpretation } from "@/components/coaching-interpretation"
 
 interface FollowupListProps {
   leaders: Leader[]
@@ -20,6 +22,8 @@ export function FollowupList({ leaders }: FollowupListProps) {
   const [loading, setLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [showRadar, setShowRadar] = useState(false)
+  const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
   const router = useRouter()
   const { toast } = useToast()
 
@@ -107,6 +111,59 @@ export function FollowupList({ leaders }: FollowupListProps) {
       fetchFollowups(selectedLeader)
     }
   }, [refreshKey])
+
+  // Calcular datos para el radar cuando cambian los followups
+  useEffect(() => {
+    if (followups.length > 0) {
+      calculateRadarData()
+    } else {
+      setRadarData([])
+      setShowRadar(false)
+    }
+  }, [followups])
+
+  const calculateRadarData = () => {
+    // Agrupar calificaciones por tema
+    const topicRatings: Record<string, { total: number; count: number }> = {}
+
+    followups.forEach((followup) => {
+      followup.topics.forEach((topic) => {
+        if (!topicRatings[topic.name]) {
+          topicRatings[topic.name] = { total: 0, count: 0 }
+        }
+        topicRatings[topic.name].total += topic.rating
+        topicRatings[topic.name].count += 1
+      })
+    })
+
+    // Calcular promedio por tema
+    const data = Object.entries(topicRatings).map(([label, { total, count }]) => ({
+      label,
+      value: Number((total / count).toFixed(2)),
+    }))
+
+    // Ordenar para mejor visualización en el radar
+    const preferredOrder = [
+      "Liderazgo cercano",
+      "Resolución táctico-estratégica de problemas",
+      "Visión transformadora",
+      "Toma de decisiones ágil y efectiva",
+      "Cultura de aprendizaje",
+      "Comunicación",
+      "Motivación e innovación",
+    ]
+
+    data.sort((a, b) => {
+      const indexA = preferredOrder.indexOf(a.label)
+      const indexB = preferredOrder.indexOf(b.label)
+      if (indexA === -1 && indexB === -1) return a.label.localeCompare(b.label)
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return indexA - indexB
+    })
+
+    setRadarData(data)
+  }
 
   const handleContinueFollowup = (followupId: string) => {
     router.push(`/?previous=${followupId}`)
@@ -729,6 +786,16 @@ export function FollowupList({ leaders }: FollowupListProps) {
             <RefreshCw className="w-4 h-4 mr-2" />
             Actualizar
           </Button>
+          {selectedLeader && radarData.length > 0 && (
+            <Button
+              variant="default"
+              onClick={() => setShowRadar(!showRadar)}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              <PieChart className="w-4 h-4 mr-2" />
+              {showRadar ? "Ocultar Radar" : "Ver Radar Táctico"}
+            </Button>
+          )}
           <Button
             variant="default"
             onClick={exportWithAnalysis}
@@ -770,6 +837,43 @@ export function FollowupList({ leaders }: FollowupListProps) {
         </Select>
 
         {loading && <div className="text-center py-4 text-muted-foreground">Cargando seguimientos...</div>}
+
+        {/* Radar Táctico-Estratégico */}
+        {showRadar && radarData.length > 0 && selectedLeader && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-center mb-4">
+                Radar Táctico-Estratégico: {uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name}
+              </h3>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Promedio de calificaciones por dimensión (Escala 1-5)
+              </p>
+              <RadarChart data={radarData} size={350} color="#2563eb" />
+              
+              {/* Leyenda de calificaciones */}
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {radarData.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      item.value >= 4 ? "bg-green-100 text-green-700" :
+                      item.value >= 3 ? "bg-blue-100 text-blue-700" :
+                      "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {item.label}: {item.value.toFixed(1)}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Interpretación del Coach */}
+            <CoachingInterpretation 
+              data={radarData} 
+              leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""} 
+            />
+          </div>
+        )}
 
         <div className="space-y-4">
           {followups.map((followup) => (
