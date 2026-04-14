@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { RadarChart } from "@/components/radar-chart"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import type { Followup } from "@/lib/types"
 
 interface RadarEvolutionProps {
@@ -24,19 +23,20 @@ const DIMENSIONS = [
   "Motivación e innovación",
 ]
 
-const COLORS = [
-  "#2563eb", // Azul
-  "#16a34a", // Verde
-  "#dc2626", // Rojo
-  "#9333ea", // Morado
-  "#ea580c", // Naranja
+// Colores para cada sesion (del mas claro/antiguo al mas oscuro/reciente)
+const SESSION_COLORS = [
+  "#bfdbfe", // Azul muy claro - Sesion 1
+  "#93c5fd", // Azul claro - Sesion 2
+  "#60a5fa", // Azul medio - Sesion 3
+  "#3b82f6", // Azul - Sesion 4
+  "#2563eb", // Azul oscuro - Sesion 5
+  "#1d4ed8", // Azul muy oscuro - Sesion 6
+  "#1e40af", // Azul profundo - Sesion 7
+  "#1e3a8a", // Azul marino - Sesion 8
 ]
 
 export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
-  const [compareMode, setCompareMode] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
-  // Ordenar followups por fecha (más antiguo primero)
+  // Ordenar followups por fecha (mas antiguo primero)
   const sortedFollowups = useMemo(() => {
     return [...followups].sort((a, b) => {
       const dateA = a.followup_date || a.created_at || ""
@@ -45,7 +45,7 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
     })
   }, [followups])
 
-  // Calcular datos del radar para cada sesión
+  // Calcular datos del radar para cada sesion
   const sessionData = useMemo(() => {
     return sortedFollowups.map((followup, index) => {
       const data = DIMENSIONS.map((dimension) => {
@@ -71,7 +71,7 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
     })
   }, [sortedFollowups])
 
-  // Calcular evolución (comparar primera vs última sesión)
+  // Calcular evolucion (comparar primera vs ultima sesion)
   const evolution = useMemo(() => {
     if (sessionData.length < 2) return null
 
@@ -97,163 +97,154 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
     return (
       <Card className="p-6">
         <p className="text-center text-gray-500">
-          No hay sesiones de acompañamiento registradas para mostrar la evolución.
+          No hay sesiones de acompanamiento registradas para mostrar la evolucion.
         </p>
       </Card>
     )
   }
 
-  const currentSession = sessionData[selectedIndex]
-  const prevSession = selectedIndex > 0 ? sessionData[selectedIndex - 1] : null
-
-  // Datasets para el modo comparación
-  const comparisonDatasets = compareMode
-    ? sessionData.slice(-3).map((session, index) => ({
-        label: `Sesión ${session.sessionNumber}`,
-        data: session.data,
-        color: COLORS[index % COLORS.length],
-      }))
-    : [
-        {
-          label: `Sesión ${currentSession.sessionNumber}`,
-          data: currentSession.data,
-          color: COLORS[0],
-        },
-      ]
+  // Crear datasets para todas las sesiones con colores progresivos
+  const allSessionsDatasets = sessionData.map((session, index) => ({
+    label: `Sesion ${session.sessionNumber} - ${
+      session.date 
+        ? format(parseISO(session.date), "dd/MM/yy", { locale: es })
+        : "Sin fecha"
+    }`,
+    data: session.data,
+    color: SESSION_COLORS[index % SESSION_COLORS.length],
+  }))
 
   return (
     <div className="space-y-6">
-      {/* Navegación de sesiones */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Evolución del Radar: {leaderName}</h3>
-          <Button
-            variant={compareMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCompareMode(!compareMode)}
-            className={compareMode ? "bg-blue-600 hover:bg-blue-700" : ""}
-          >
-            {compareMode ? "Modo Individual" : "Comparar Sesiones"}
-          </Button>
+      {/* Radar con todas las sesiones superpuestas */}
+      <Card className="p-6">
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-semibold">Evolucion del Radar: {leaderName}</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {sessionData.length} acompanamiento{sessionData.length !== 1 ? "s" : ""} registrado{sessionData.length !== 1 ? "s" : ""}
+          </p>
         </div>
 
-        {!compareMode && (
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedIndex(Math.max(0, selectedIndex - 1))}
-              disabled={selectedIndex === 0}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="text-center">
-              <p className="font-medium">
-                Sesión {currentSession.sessionNumber} de {sessionData.length}
-              </p>
-              <p className="text-sm text-gray-500">
-                {currentSession.date 
-                  ? format(parseISO(currentSession.date), "d 'de' MMMM, yyyy", { locale: es })
-                  : "Fecha no disponible"}
-              </p>
-              <p className="text-xs text-gray-400 capitalize">{currentSession.type}</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedIndex(Math.min(sessionData.length - 1, selectedIndex + 1))}
-              disabled={selectedIndex === sessionData.length - 1}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Radar Chart */}
         <RadarChart
-          datasets={comparisonDatasets}
+          datasets={allSessionsDatasets}
           dimensions={DIMENSIONS}
           maxValue={5}
-          size={380}
-          showLegend={compareMode}
+          size={420}
+          showLegend={true}
         />
 
-        {/* Promedio de la sesión */}
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-500">
-            Promedio general:{" "}
-            <span className="font-semibold text-blue-600">
-              {currentSession.average.toFixed(2)}
-            </span>
-            {prevSession && (
-              <span
-                className={`ml-2 text-sm ${
-                  currentSession.average > prevSession.average
-                    ? "text-green-600"
-                    : currentSession.average < prevSession.average
-                    ? "text-red-600"
-                    : "text-gray-500"
-                }`}
+        {/* Leyenda de colores por sesion */}
+        <div className="mt-6">
+          <p className="text-sm font-medium text-gray-700 mb-3 text-center">Sesiones de Acompanamiento</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {sessionData.map((session, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-white"
+                style={{ borderColor: SESSION_COLORS[index % SESSION_COLORS.length] }}
               >
-                ({currentSession.average > prevSession.average ? "+" : ""}
-                {(currentSession.average - prevSession.average).toFixed(2)} vs sesión anterior)
-              </span>
-            )}
-          </p>
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: SESSION_COLORS[index % SESSION_COLORS.length] }}
+                />
+                <div className="text-xs">
+                  <p className="font-medium">Sesion {session.sessionNumber}</p>
+                  <p className="text-gray-500">
+                    {session.date 
+                      ? format(parseISO(session.date), "d MMM yyyy", { locale: es })
+                      : "Sin fecha"}
+                  </p>
+                  <p className={`font-semibold ${
+                    session.average >= 4 ? "text-green-600" :
+                    session.average >= 3 ? "text-blue-600" :
+                    "text-amber-600"
+                  }`}>
+                    Prom: {session.average.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 
-      {/* Tabla de evolución */}
+      {/* Tabla de evolucion */}
       {evolution && sessionData.length >= 2 && (
         <Card className="p-4">
           <h4 className="font-semibold mb-4">
-            Evolución: Sesión 1 vs Sesión {sessionData.length}
+            Evolucion: Sesion 1 vs Sesion {sessionData.length}
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 px-2">Dimensión</th>
-                  <th className="text-center py-2 px-2">Inicial</th>
-                  <th className="text-center py-2 px-2">Actual</th>
-                  <th className="text-center py-2 px-2">Cambio</th>
-                  <th className="text-center py-2 px-2">Tendencia</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-3 px-3 font-semibold">Dimension</th>
+                  <th className="text-center py-3 px-3 font-semibold">
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SESSION_COLORS[0] }} />
+                      Inicial
+                    </div>
+                  </th>
+                  <th className="text-center py-3 px-3 font-semibold">
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SESSION_COLORS[Math.min(sessionData.length - 1, SESSION_COLORS.length - 1)] }} />
+                      Actual
+                    </div>
+                  </th>
+                  <th className="text-center py-3 px-3 font-semibold">Cambio</th>
+                  <th className="text-center py-3 px-3 font-semibold">Tendencia</th>
                 </tr>
               </thead>
               <tbody>
                 {evolution.map((item, index) => (
-                  <tr key={index} className="border-b last:border-0">
-                    <td className="py-2 px-2 text-gray-700">{item.dimension}</td>
-                    <td className="text-center py-2 px-2">
-                      {item.firstValue > 0 ? item.firstValue.toFixed(1) : "-"}
+                  <tr key={index} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-3 px-3 text-gray-700">{item.dimension}</td>
+                    <td className="text-center py-3 px-3">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        {item.firstValue > 0 ? item.firstValue.toFixed(1) : "-"}
+                      </span>
                     </td>
-                    <td className="text-center py-2 px-2">
-                      {item.lastValue > 0 ? item.lastValue.toFixed(1) : "-"}
+                    <td className="text-center py-3 px-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.lastValue >= 4 ? "bg-green-50 text-green-700" :
+                        item.lastValue >= 3 ? "bg-blue-50 text-blue-700" :
+                        item.lastValue > 0 ? "bg-amber-50 text-amber-700" :
+                        "bg-gray-50 text-gray-500"
+                      }`}>
+                        {item.lastValue > 0 ? item.lastValue.toFixed(1) : "-"}
+                      </span>
                     </td>
-                    <td
-                      className={`text-center py-2 px-2 font-medium ${
-                        item.change > 0
-                          ? "text-green-600"
-                          : item.change < 0
-                          ? "text-red-600"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {item.firstValue > 0 && item.lastValue > 0
-                        ? `${item.change > 0 ? "+" : ""}${item.change.toFixed(1)}`
-                        : "-"}
+                    <td className="text-center py-3 px-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        item.change > 0 ? "bg-green-100 text-green-700" :
+                        item.change < 0 ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-500"
+                      }`}>
+                        {item.firstValue > 0 && item.lastValue > 0
+                          ? `${item.change > 0 ? "+" : ""}${item.change.toFixed(1)}`
+                          : "-"}
+                      </span>
                     </td>
-                    <td className="text-center py-2 px-2">
+                    <td className="text-center py-3 px-3">
                       {item.firstValue > 0 && item.lastValue > 0 ? (
                         item.trend === "up" ? (
-                          <TrendingUp className="w-4 h-4 text-green-600 mx-auto" />
+                          <div className="flex items-center justify-center gap-1 text-green-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="text-xs font-medium">Mejora</span>
+                          </div>
                         ) : item.trend === "down" ? (
-                          <TrendingDown className="w-4 h-4 text-red-600 mx-auto" />
+                          <div className="flex items-center justify-center gap-1 text-red-600">
+                            <TrendingDown className="w-4 h-4" />
+                            <span className="text-xs font-medium">Baja</span>
+                          </div>
                         ) : (
-                          <Minus className="w-4 h-4 text-gray-400 mx-auto" />
+                          <div className="flex items-center justify-center gap-1 text-gray-500">
+                            <Minus className="w-4 h-4" />
+                            <span className="text-xs font-medium">Estable</span>
+                          </div>
                         )
                       ) : (
-                        "-"
+                        <span className="text-gray-400">-</span>
                       )}
                     </td>
                   </tr>
@@ -261,47 +252,32 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
               </tbody>
             </table>
           </div>
+          
+          {/* Resumen de evolucion */}
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-green-600">
+                  {evolution.filter(e => e.trend === "up").length}
+                </p>
+                <p className="text-xs text-gray-500">Dimensiones en mejora</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-500">
+                  {evolution.filter(e => e.trend === "stable").length}
+                </p>
+                <p className="text-xs text-gray-500">Dimensiones estables</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-600">
+                  {evolution.filter(e => e.trend === "down").length}
+                </p>
+                <p className="text-xs text-gray-500">Dimensiones en retroceso</p>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
-
-      {/* Línea de tiempo */}
-      <Card className="p-4">
-        <h4 className="font-semibold mb-4">Línea de Tiempo de Sesiones</h4>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {sessionData.map((session, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                setSelectedIndex(index)
-                setCompareMode(false)
-              }}
-              className={`flex-shrink-0 p-3 rounded-lg border transition-all ${
-                selectedIndex === index && !compareMode
-                  ? "bg-blue-50 border-blue-400"
-                  : "bg-white border-gray-200 hover:border-blue-200"
-              }`}
-            >
-              <p className="font-medium text-sm">Sesión {session.sessionNumber}</p>
-              <p className="text-xs text-gray-500">
-                {session.date 
-                  ? format(parseISO(session.date), "dd/MM/yy", { locale: es })
-                  : "-"}
-              </p>
-              <p
-                className={`text-xs font-medium mt-1 ${
-                  session.average >= 4
-                    ? "text-green-600"
-                    : session.average >= 3
-                    ? "text-blue-600"
-                    : "text-amber-600"
-                }`}
-              >
-                Prom: {session.average.toFixed(1)}
-              </p>
-            </button>
-          ))}
-        </div>
-      </Card>
     </div>
   )
 }
