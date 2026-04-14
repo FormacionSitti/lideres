@@ -2,23 +2,28 @@
 
 import { useEffect, useRef } from "react"
 
+interface RadarDataset {
+  label: string
+  data: { dimension: string; value: number }[]
+  color: string
+}
+
 interface RadarChartProps {
-  data: {
-    label: string
-    value: number
-  }[]
+  datasets: RadarDataset[]
+  dimensions: string[]
   maxValue?: number
   size?: number
-  color?: string
   backgroundColor?: string
+  showLegend?: boolean
 }
 
 export function RadarChart({
-  data,
+  datasets,
+  dimensions,
   maxValue = 5,
-  size = 300,
-  color = "#2563eb",
+  size = 350,
   backgroundColor = "#e5e7eb",
+  showLegend = true,
 }: RadarChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -29,7 +34,6 @@ export function RadarChart({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Configurar el canvas para alta resolución
     const dpr = window.devicePixelRatio || 1
     canvas.width = size * dpr
     canvas.height = size * dpr
@@ -39,15 +43,14 @@ export function RadarChart({
 
     const centerX = size / 2
     const centerY = size / 2
-    const radius = size * 0.35
-    const numPoints = data.length
+    const radius = size * 0.32
+    const numPoints = dimensions.length
     const angleStep = (2 * Math.PI) / numPoints
-    const startAngle = -Math.PI / 2 // Comenzar desde arriba
+    const startAngle = -Math.PI / 2
 
-    // Limpiar canvas
     ctx.clearRect(0, 0, size, size)
 
-    // Dibujar círculos de fondo (niveles 1-5)
+    // Dibujar círculos de fondo
     for (let level = 1; level <= maxValue; level++) {
       const levelRadius = (radius * level) / maxValue
       ctx.beginPath()
@@ -56,20 +59,18 @@ export function RadarChart({
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // Etiquetas de nivel
       ctx.fillStyle = "#9ca3af"
-      ctx.font = "10px sans-serif"
-      ctx.textAlign = "center"
-      ctx.fillText(level.toString(), centerX + 8, centerY - levelRadius + 4)
+      ctx.font = "9px sans-serif"
+      ctx.textAlign = "left"
+      ctx.fillText(level.toString(), centerX + 4, centerY - levelRadius + 3)
     }
 
     // Dibujar líneas radiales y etiquetas
-    data.forEach((point, index) => {
+    dimensions.forEach((dimension, index) => {
       const angle = startAngle + index * angleStep
       const x = centerX + radius * Math.cos(angle)
       const y = centerY + radius * Math.sin(angle)
 
-      // Línea radial
       ctx.beginPath()
       ctx.moveTo(centerX, centerY)
       ctx.lineTo(x, y)
@@ -77,19 +78,17 @@ export function RadarChart({
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // Etiqueta
-      const labelRadius = radius + 35
+      const labelRadius = radius + 40
       const labelX = centerX + labelRadius * Math.cos(angle)
       const labelY = centerY + labelRadius * Math.sin(angle)
 
       ctx.fillStyle = "#374151"
-      ctx.font = "11px sans-serif"
+      ctx.font = "10px sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
 
-      // Dividir etiquetas largas en múltiples líneas
-      const words = point.label.split(" ")
-      const maxWidth = 80
+      const words = dimension.split(" ")
+      const maxWidth = 70
       let line = ""
       let lines: string[] = []
 
@@ -105,7 +104,7 @@ export function RadarChart({
       })
       lines.push(line)
 
-      const lineHeight = 12
+      const lineHeight = 11
       const startY = labelY - ((lines.length - 1) * lineHeight) / 2
 
       lines.forEach((l, i) => {
@@ -113,51 +112,101 @@ export function RadarChart({
       })
     })
 
-    // Dibujar el área del radar (datos)
-    ctx.beginPath()
-    data.forEach((point, index) => {
-      const angle = startAngle + index * angleStep
-      const pointRadius = (radius * point.value) / maxValue
-      const x = centerX + pointRadius * Math.cos(angle)
-      const y = centerY + pointRadius * Math.sin(angle)
-
-      if (index === 0) {
-        ctx.moveTo(x, y)
-      } else {
-        ctx.lineTo(x, y)
-      }
-    })
-    ctx.closePath()
-
-    // Relleno con transparencia
-    ctx.fillStyle = `${color}33`
-    ctx.fill()
-
-    // Borde del área
-    ctx.strokeStyle = color
-    ctx.lineWidth = 2
-    ctx.stroke()
-
-    // Dibujar puntos en cada vértice
-    data.forEach((point, index) => {
-      const angle = startAngle + index * angleStep
-      const pointRadius = (radius * point.value) / maxValue
-      const x = centerX + pointRadius * Math.cos(angle)
-      const y = centerY + pointRadius * Math.sin(angle)
-
+    // Dibujar cada dataset
+    datasets.forEach((dataset) => {
       ctx.beginPath()
-      ctx.arc(x, y, 4, 0, 2 * Math.PI)
-      ctx.fillStyle = color
+      dimensions.forEach((dimension, index) => {
+        const dataPoint = dataset.data.find((d) => d.dimension === dimension)
+        const value = dataPoint?.value || 0
+        const angle = startAngle + index * angleStep
+        const pointRadius = (radius * value) / maxValue
+        const x = centerX + pointRadius * Math.cos(angle)
+        const y = centerY + pointRadius * Math.sin(angle)
+
+        if (index === 0) {
+          ctx.moveTo(x, y)
+        } else {
+          ctx.lineTo(x, y)
+        }
+      })
+      ctx.closePath()
+
+      ctx.fillStyle = `${dataset.color}33`
       ctx.fill()
-      ctx.strokeStyle = "#fff"
+      ctx.strokeStyle = dataset.color
       ctx.lineWidth = 2
       ctx.stroke()
+
+      // Puntos
+      dimensions.forEach((dimension, index) => {
+        const dataPoint = dataset.data.find((d) => d.dimension === dimension)
+        const value = dataPoint?.value || 0
+        const angle = startAngle + index * angleStep
+        const pointRadius = (radius * value) / maxValue
+        const x = centerX + pointRadius * Math.cos(angle)
+        const y = centerY + pointRadius * Math.sin(angle)
+
+        ctx.beginPath()
+        ctx.arc(x, y, 4, 0, 2 * Math.PI)
+        ctx.fillStyle = dataset.color
+        ctx.fill()
+        ctx.strokeStyle = "#fff"
+        ctx.lineWidth = 2
+        ctx.stroke()
+      })
     })
-  }, [data, maxValue, size, color, backgroundColor])
+  }, [datasets, dimensions, maxValue, size, backgroundColor])
 
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center">
       <canvas ref={canvasRef} style={{ width: size, height: size }} />
+      {showLegend && datasets.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
+          {datasets.map((dataset, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: dataset.color }}
+              />
+              <span className="text-sm text-gray-600">{dataset.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+// Componente simple para un solo líder (compatibilidad hacia atrás)
+interface SimpleRadarChartProps {
+  data: { label: string; value: number }[]
+  maxValue?: number
+  size?: number
+  color?: string
+}
+
+export function SimpleRadarChart({
+  data,
+  maxValue = 5,
+  size = 350,
+  color = "#2563eb",
+}: SimpleRadarChartProps) {
+  const dimensions = data.map((d) => d.label)
+  const datasets = [
+    {
+      label: "Actual",
+      data: data.map((d) => ({ dimension: d.label, value: d.value })),
+      color,
+    },
+  ]
+
+  return (
+    <RadarChart
+      datasets={datasets}
+      dimensions={dimensions}
+      maxValue={maxValue}
+      size={size}
+      showLegend={false}
+    />
   )
 }
