@@ -114,12 +114,16 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
     setLoading(true)
 
     try {
-      // Validaciones
+      // Validaciones con marcador para distinguir errores de validación vs backend
       if (!selectedLeader) {
-        throw new Error("Debes seleccionar un líder")
+        const validationError = new Error("Debes seleccionar un líder antes de continuar")
+        ;(validationError as any).isValidation = true
+        throw validationError
       }
       if (!followupDate) {
-        throw new Error("Debes seleccionar una fecha de seguimiento")
+        const validationError = new Error("Debes seleccionar una fecha de seguimiento")
+        ;(validationError as any).isValidation = true
+        throw validationError
       }
 
       // Obtener el último número de secuencia para este líder usando la API
@@ -245,9 +249,13 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
         window.location.href = "/"
       }
     } catch (error) {
-      console.error("Error adding followup:", error)
+      // Solo registrar en consola los errores de backend, no los de validación
+      const isValidation = error instanceof Error && (error as any).isValidation
+      if (!isValidation) {
+        console.error("Error adding followup:", error)
+      }
       toast({
-        title: "Error",
+        title: isValidation ? "Campo requerido" : "Error",
         description:
           error instanceof Error ? error.message : "No se pudo guardar el seguimiento. Por favor intenta nuevamente.",
         variant: "destructive",
@@ -371,9 +379,18 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
             <Input type="date" value={nextFollowupDate} onChange={(e) => setNextFollowupDate(e.target.value)} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || !selectedLeader || !followupDate}
+          >
             {loading ? "Agregando..." : "Agregar"}
           </Button>
+          {!selectedLeader && (
+            <p className="text-xs text-amber-700 text-center">
+              Selecciona un líder para habilitar el botón
+            </p>
+          )}
         </div>
       </form>
     </Card>
