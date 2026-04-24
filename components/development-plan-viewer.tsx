@@ -148,40 +148,46 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
       {/* Temas del plan */}
       <div className="space-y-3">
         <h3 className="text-base font-semibold">Temas a fortalecer</h3>
-        {selectedPlan.items.map((item) => (
-          <Card key={item.id} className="p-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-medium">{item.topic_name}</h4>
-                <p className="text-xs text-gray-500 mt-1">Meta: {item.target_rating}/5 • Actual: {item.current_rating}/5</p>
+        {selectedPlan.items && selectedPlan.items.length > 0 ? (
+          selectedPlan.items.map((item) => (
+            <Card key={item.id} className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h4 className="font-medium">{item.topic_name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">Meta: {item.target_rating}/5 • Actual: {item.current_rating}/5</p>
+                </div>
+                {item.progress >= 100 ? (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                ) : item.progress >= 50 ? (
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                )}
               </div>
-              {item.progress >= 100 ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : item.progress >= 50 ? (
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-amber-600" />
+
+              {/* Progreso del tema */}
+              <div className="space-y-2 mb-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium">Progreso</span>
+                  <span className="text-xs font-semibold">{item.progress.toFixed(0)}%</span>
+                </div>
+                <Progress value={item.progress} className="h-1.5" />
+              </div>
+
+              {/* Actividades */}
+              {item.activities && (
+                <div className="bg-gray-50 rounded p-2 text-xs text-gray-700">
+                  <p className="font-medium mb-1">Actividades:</p>
+                  <p className="whitespace-pre-wrap">{item.activities}</p>
+                </div>
               )}
-            </div>
-
-            {/* Progreso del tema */}
-            <div className="space-y-2 mb-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-medium">Progreso</span>
-                <span className="text-xs font-semibold">{item.progress.toFixed(0)}%</span>
-              </div>
-              <Progress value={item.progress} className="h-1.5" />
-            </div>
-
-            {/* Actividades */}
-            {item.activities && (
-              <div className="bg-gray-50 rounded p-2 text-xs text-gray-700">
-                <p className="font-medium mb-1">Actividades:</p>
-                <p className="whitespace-pre-wrap">{item.activities}</p>
-              </div>
-            )}
+            </Card>
+          ))
+        ) : (
+          <Card className="p-4 text-center text-gray-500">
+            <p>No hay temas asignados a este plan</p>
           </Card>
-        ))}
+        )}
       </div>
 
       {/* Botones de acción */}
