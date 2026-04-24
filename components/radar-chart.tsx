@@ -112,9 +112,11 @@ export function RadarChart({
       })
     })
 
-    // Dibujar cada dataset
+    // Dibujar cada dataset (primero todos los rellenos, luego los bordes para mejor visibilidad)
     datasets.forEach((dataset) => {
-      ctx.beginPath()
+      const points: { x: number; y: number }[] = []
+      
+      // Calcular todos los puntos
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
         const value = dataPoint?.value || 0
@@ -122,22 +124,32 @@ export function RadarChart({
         const pointRadius = (radius * value) / maxValue
         const x = centerX + pointRadius * Math.cos(angle)
         const y = centerY + pointRadius * Math.sin(angle)
+        points.push({ x, y })
+      })
 
+      // Dibujar poligono relleno
+      ctx.beginPath()
+      points.forEach((point, index) => {
         if (index === 0) {
-          ctx.moveTo(x, y)
+          ctx.moveTo(point.x, point.y)
         } else {
-          ctx.lineTo(x, y)
+          ctx.lineTo(point.x, point.y)
         }
       })
       ctx.closePath()
 
-      ctx.fillStyle = `${dataset.color}33`
+      // Relleno con mas opacidad (50% en lugar de 20%)
+      ctx.fillStyle = `${dataset.color}50`
       ctx.fill()
+      
+      // Borde grueso
       ctx.strokeStyle = dataset.color
-      ctx.lineWidth = 2
+      ctx.lineWidth = 3
       ctx.stroke()
+    })
 
-      // Puntos
+    // Dibujar los puntos encima de todos los poligonos
+    datasets.forEach((dataset) => {
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
         const value = dataPoint?.value || 0
@@ -147,7 +159,7 @@ export function RadarChart({
         const y = centerY + pointRadius * Math.sin(angle)
 
         ctx.beginPath()
-        ctx.arc(x, y, 4, 0, 2 * Math.PI)
+        ctx.arc(x, y, 5, 0, 2 * Math.PI)
         ctx.fillStyle = dataset.color
         ctx.fill()
         ctx.strokeStyle = "#fff"
