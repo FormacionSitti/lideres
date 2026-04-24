@@ -27,21 +27,35 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
+  // Normalizar texto: remover tildes y llevar a minusculas para comparacion robusta
+  const normalizeText = (text: string): string =>
+    (text || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim()
+
   // Calcular promedio actual de calificaciones por tema usando el NOMBRE del tema
   // Los followups almacenan topics por nombre, no por id
   const currentAverages = useMemo(() => {
+    console.log("[v0] Form - followups recibidos:", followups.length)
+    if (followups.length > 0) {
+      console.log("[v0] Form - primer followup topics:", followups[0]?.topics)
+    }
+
     const averages: Record<string, number> = {}
     topics.forEach((topic) => {
+      const normalizedTopic = normalizeText(topic.name)
       const ratings = followups
         .flatMap((f) =>
-          f.topics
-            .filter((t) => t.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ===
-              topic.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())
-            .map((t) => t.rating)
+          (f.topics || [])
+            .filter((t) => normalizeText(t.name) === normalizedTopic)
+            .map((t) => t.rating),
         )
-        .filter((r) => r > 0)
+        .filter((r) => typeof r === "number" && r > 0)
       averages[topic.id] = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
     })
+    console.log("[v0] Form - averages calculados:", averages)
     return averages
   }, [followups, topics])
 
@@ -52,6 +66,8 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
       return avg > 0 && avg < 3.5
     })
   }, [topics, currentAverages])
+
+  const hasFollowups = followups.length > 0
 
   const handleSelectTopic = (topicId: string, checked: boolean) => {
     if (checked) {
@@ -151,13 +167,24 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
 
       <div>
         <Label className="text-sm font-medium mb-3 block">Temas a trabajar</Label>
-        <Alert className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Se sugieren {lowPerformanceTopics.length} temas con bajo desempeño (promedio {"<"} 3). Puedes seleccionar estos o
-            agregar otros.
-          </AlertDescription>
-        </Alert>
+        {!hasFollowups ? (
+          <Alert className="mb-4 border-amber-300 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-700" />
+            <AlertDescription className="text-amber-900">
+              <strong>Este líder aún no tiene seguimientos registrados.</strong> Para identificar areas de desarrollo con base en datos,
+              primero registra al menos un seguimiento en la pestaña "Nuevo Seguimiento". Mientras tanto, puedes crear un plan manual seleccionando los temas que deseas trabajar.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Basado en {followups.length} seguimiento{followups.length === 1 ? "" : "s"} previo
+              {followups.length === 1 ? "" : "s"}, se sugieren {lowPerformanceTopics.length} tema
+              {lowPerformanceTopics.length === 1 ? "" : "s"} con bajo desempeño (promedio {"<"} 3.5). Puedes seleccionar estos o agregar otros.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-4">
           {topics.map((topic) => {
