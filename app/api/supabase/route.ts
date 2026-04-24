@@ -128,8 +128,6 @@ export async function POST(request: Request) {
       const { leader_id } = data
       const parsedLeaderId = Number(leader_id)
 
-      console.log("[v0] getFollowups - leader_id recibido:", leader_id, "parseado:", parsedLeaderId)
-
       const { data: followups, error } = await supabase
         .from("followups")
         .select(`
@@ -156,17 +154,7 @@ export async function POST(request: Request) {
         .eq("leader_id", parsedLeaderId)
         .order("followup_date", { ascending: false })
 
-      if (error) {
-        console.error("[v0] getFollowups - error Supabase:", error)
-        throw error
-      }
-
-      console.log(
-        "[v0] getFollowups - followups encontrados:",
-        followups?.length || 0,
-        "para leader_id:",
-        parsedLeaderId,
-      )
+      if (error) throw error
 
       return NextResponse.json({ data: followups })
     }

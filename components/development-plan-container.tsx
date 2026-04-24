@@ -89,7 +89,6 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
       })
       if (response.ok) {
         const { data } = await response.json()
-        console.log("[v0] Followups recibidos:", data?.length || 0, "para lider:", leaderId)
         const formattedFollowups = (data || []).map((followup: any) => ({
           ...followup,
           topics: (followup.followup_topics || []).map((ft: any) => ({
@@ -97,10 +96,7 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
             rating: ft.rating || 0,
           })),
         }))
-        console.log("[v0] Followups formateados:", formattedFollowups)
         setLeaderFollowups(formattedFollowups)
-      } else {
-        console.error("[v0] Error fetch followups status:", response.status)
       }
     } catch (error) {
       console.error("[v0] Error fetching followups:", error)

@@ -38,11 +38,6 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
   // Calcular promedio actual de calificaciones por tema usando el NOMBRE del tema
   // Los followups almacenan topics por nombre, no por id
   const currentAverages = useMemo(() => {
-    console.log("[v0] Form - followups recibidos:", followups.length)
-    if (followups.length > 0) {
-      console.log("[v0] Form - primer followup topics:", followups[0]?.topics)
-    }
-
     const averages: Record<string, number> = {}
     topics.forEach((topic) => {
       const normalizedTopic = normalizeText(topic.name)
@@ -55,7 +50,6 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
         .filter((r) => typeof r === "number" && r > 0)
       averages[topic.id] = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
     })
-    console.log("[v0] Form - averages calculados:", averages)
     return averages
   }, [followups, topics])
 
