@@ -4,7 +4,15 @@ import { getSupabaseServer } from "@/lib/supabase-server"
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { leader_id, duration_months, items, observations } = body
+    const { leader_id, duration_months, selected_topics, observations } = body
+
+    // Validar datos requeridos
+    if (!leader_id || !duration_months || !selected_topics || selected_topics.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Faltan datos requeridos" },
+        { status: 400 }
+      )
+    }
 
     const supabase = getSupabaseServer()
 
@@ -32,30 +40,42 @@ export async function POST(request: Request) {
     }
 
     // Crear items del plan
-    const itemsData = items.map((item: any) => ({
-      plan_id: plan.id,
-      topic_id: item.id,
-      target_rating: item.target_rating,
-      current_rating: 0,
-      progress: 0,
-      activities: item.activities,
-    }))
+    if (selected_topics && selected_topics.length > 0) {
+      const itemsData = selected_topics.map((item: any) => ({
+        plan_id: plan.id,
+        topic_id: item.id,
+        target_rating: item.target_rating || 4,
+        current_rating: 0,
+        progress: 0,
+        activities: item.activities || "",
+      }))
 
-    const { error: itemsError } = await supabase
-      .from("development_plan_items")
-      .insert(itemsData)
+      const { error: itemsError } = await supabase
+        .from("development_plan_items")
+        .insert(itemsData)
 
-    if (itemsError) {
-      throw new Error(`Error creando items: ${itemsError.message}`)
+      if (itemsError) {
+        throw new Error(`Error creando items: ${itemsError.message}`)
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Plan de desarrollo creado exitosamente",
-      plan,
+      data: {
+        ...plan,
+        items: selected_topics.map((item: any) => ({
+          id: item.id,
+          topic_id: item.id,
+          topic_name: item.topic_name || "",
+          target_rating: item.target_rating || 4,
+          current_rating: 0,
+          progress: 0,
+          activities: item.activities || "",
+        })),
+      },
     })
   } catch (error: any) {
-    console.error("Error en POST /api/development-plans:", error)
+    console.error("Error en POST /api/development-plans:", error.message)
     return NextResponse.json(
       {
         success: false,
