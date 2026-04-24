@@ -112,11 +112,11 @@ export function RadarChart({
       })
     })
 
-    // Dibujar cada dataset (primero todos los rellenos, luego los bordes para mejor visibilidad)
-    datasets.forEach((dataset) => {
-      const points: { x: number; y: number }[] = []
+    // Dibujar cada dataset como poligono relleno completo
+    datasets.forEach((dataset, datasetIndex) => {
+      const points: { x: number; y: number; value: number }[] = []
       
-      // Calcular todos los puntos
+      // Calcular todos los puntos para TODAS las dimensiones
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
         const value = dataPoint?.value || 0
@@ -124,25 +124,27 @@ export function RadarChart({
         const pointRadius = (radius * value) / maxValue
         const x = centerX + pointRadius * Math.cos(angle)
         const y = centerY + pointRadius * Math.sin(angle)
-        points.push({ x, y })
+        points.push({ x, y, value })
       })
 
-      // Dibujar poligono relleno
+      // Solo dibujar si hay al menos un punto con valor > 0
+      const hasData = points.some(p => p.value > 0)
+      if (!hasData) return
+
+      // Dibujar el poligono completo conectando TODOS los puntos
       ctx.beginPath()
-      points.forEach((point, index) => {
-        if (index === 0) {
-          ctx.moveTo(point.x, point.y)
-        } else {
-          ctx.lineTo(point.x, point.y)
-        }
-      })
+      ctx.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y)
+      }
       ctx.closePath()
 
-      // Relleno con mas opacidad (50% en lugar de 20%)
-      ctx.fillStyle = `${dataset.color}50`
+      // Relleno semitransparente (ajustado segun cantidad de datasets)
+      const opacity = datasets.length > 1 ? "66" : "99" // 40% o 60%
+      ctx.fillStyle = `${dataset.color}${opacity}`
       ctx.fill()
       
-      // Borde grueso
+      // Borde grueso y visible
       ctx.strokeStyle = dataset.color
       ctx.lineWidth = 3
       ctx.stroke()

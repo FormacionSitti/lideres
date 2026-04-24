@@ -54,7 +54,12 @@ export function RadarEvolution({ followups, leaderName }: RadarEvolutionProps) {
   const sessionData = useMemo(() => {
     return sortedFollowups.map((followup, index) => {
       const data = DIMENSIONS.map((dimension) => {
-        const topic = followup.topics.find((t) => t.name === dimension)
+        // Buscar coincidencia exacta o normalizada (sin tildes)
+        const normalizedDimension = dimension.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        const topic = followup.topics.find((t) => {
+          const normalizedTopic = t.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+          return normalizedTopic === normalizedDimension || t.name === dimension
+        })
         return {
           dimension,
           value: topic?.rating || 0,
