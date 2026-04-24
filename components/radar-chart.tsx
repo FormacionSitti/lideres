@@ -116,21 +116,21 @@ export function RadarChart({
     datasets.forEach((dataset, datasetIndex) => {
       const points: { x: number; y: number; value: number }[] = []
       
-      console.log("[v0] Dataset:", dataset.label, "Data:", dataset.data)
-      
       // Calcular todos los puntos para TODAS las dimensiones
+      // Si un valor es 0, usar un valor minimo de 0.3 para que el poligono no colapse al centro
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
-        const value = dataPoint?.value || 0
+        const rawValue = dataPoint?.value || 0
+        // Usar valor minimo de 0.3 si el tema no fue evaluado para mantener forma del poligono
+        const value = rawValue > 0 ? rawValue : 0.3
         const angle = startAngle + index * angleStep
         const pointRadius = (radius * value) / maxValue
         const x = centerX + pointRadius * Math.cos(angle)
         const y = centerY + pointRadius * Math.sin(angle)
-        points.push({ x, y, value })
-        console.log("[v0] Point:", dimension, "value:", value, "x:", x.toFixed(2), "y:", y.toFixed(2))
+        points.push({ x, y, value: rawValue })
       })
 
-      // Solo dibujar si hay al menos un punto con valor > 0
+      // Solo dibujar si hay al menos un punto con valor real > 0
       const hasData = points.some(p => p.value > 0)
       if (!hasData) return
 
@@ -143,7 +143,7 @@ export function RadarChart({
       ctx.closePath()
 
       // Relleno semitransparente (ajustado segun cantidad de datasets)
-      const opacity = datasets.length > 1 ? "66" : "99" // 40% o 60%
+      const opacity = datasets.length > 1 ? "55" : "77" // 33% o 47%
       ctx.fillStyle = `${dataset.color}${opacity}`
       ctx.fill()
       
@@ -157,15 +157,18 @@ export function RadarChart({
     datasets.forEach((dataset) => {
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
-        const value = dataPoint?.value || 0
+        const rawValue = dataPoint?.value || 0
+        // Usar mismo valor minimo que el poligono
+        const value = rawValue > 0 ? rawValue : 0.3
         const angle = startAngle + index * angleStep
         const pointRadius = (radius * value) / maxValue
         const x = centerX + pointRadius * Math.cos(angle)
         const y = centerY + pointRadius * Math.sin(angle)
 
         ctx.beginPath()
-        ctx.arc(x, y, 5, 0, 2 * Math.PI)
-        ctx.fillStyle = dataset.color
+        // Puntos mas grandes para datos reales, mas pequenos para no evaluados
+        ctx.arc(x, y, rawValue > 0 ? 6 : 3, 0, 2 * Math.PI)
+        ctx.fillStyle = rawValue > 0 ? dataset.color : "#9ca3af"
         ctx.fill()
         ctx.strokeStyle = "#fff"
         ctx.lineWidth = 2
