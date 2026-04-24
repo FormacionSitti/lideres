@@ -116,6 +116,8 @@ export function RadarChart({
     datasets.forEach((dataset, datasetIndex) => {
       const points: { x: number; y: number; value: number }[] = []
       
+      console.log("[v0] Dataset:", dataset.label, "Data:", dataset.data)
+      
       // Calcular todos los puntos para TODAS las dimensiones
       dimensions.forEach((dimension, index) => {
         const dataPoint = dataset.data.find((d) => d.dimension === dimension)
@@ -125,6 +127,7 @@ export function RadarChart({
         const x = centerX + pointRadius * Math.cos(angle)
         const y = centerY + pointRadius * Math.sin(angle)
         points.push({ x, y, value })
+        console.log("[v0] Point:", dimension, "value:", value, "x:", x.toFixed(2), "y:", y.toFixed(2))
       })
 
       // Solo dibujar si hay al menos un punto con valor > 0

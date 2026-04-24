@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { ResetButton } from "@/components/reset-button"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 function ErrorDisplay({ error }: { error: Error }) {
   const isServerDown = error.message.includes('521') || error.message.includes('server is down') || error.message.includes('paused')
@@ -59,28 +59,7 @@ function LoadingDisplay() {
 }
 
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl) {
-    throw new Error(
-      "Falta NEXT_PUBLIC_SUPABASE_URL. Configúrala en las variables de entorno.",
-    )
-  }
-
-  if (!supabaseKey) {
-    throw new Error(
-      "Falta SUPABASE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY. Configúrala en las variables de entorno.",
-    )
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  })
+  return getSupabaseServer()
 }
 
 async function getLeaders() {
