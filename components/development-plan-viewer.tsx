@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
@@ -52,13 +53,23 @@ interface DevelopmentPlan {
   }>
 }
 
+interface EditableItem {
+  topic_id: string
+  topic_name: string
+  target_rating: number
+  current_rating: number
+  activities: string
+  existing_id?: string
+}
+
 interface DevelopmentPlanViewerProps {
   plans: DevelopmentPlan[]
   leaders: Array<{ id: number; name: string }>
+  topics?: Array<{ id: string; name: string }>
   onUpdate: () => Promise<void>
 }
 
-export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentPlanViewerProps) {
+export function DevelopmentPlanViewer({ plans, leaders, topics = [], onUpdate }: DevelopmentPlanViewerProps) {
   const [selectedPlanId, setSelectedPlanId] = useState<string>(plans[0]?.id || "")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -68,6 +79,7 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
   const [editStartDate, setEditStartDate] = useState<string>("")
   const [editStatus, setEditStatus] = useState<string>("active")
   const [editObservations, setEditObservations] = useState<string>("")
+  const [editItems, setEditItems] = useState<EditableItem[]>([])
   const { toast } = useToast()
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId)
@@ -106,8 +118,42 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
       setEditStartDate(selectedPlan.start_date)
       setEditStatus(selectedPlan.status)
       setEditObservations(selectedPlan.observations || "")
+
+      // Inicializar items editables desde los items del plan
+      const initialItems: EditableItem[] = (selectedPlan.items || []).map((item) => ({
+        topic_id: String(item.topic_id),
+        topic_name: item.topic_name,
+        target_rating: item.target_rating,
+        current_rating: item.current_rating,
+        activities: item.activities || "",
+        existing_id: item.id,
+      }))
+      setEditItems(initialItems)
     }
   }, [showEditDialog, selectedPlan])
+
+  const toggleEditTopic = (topic: { id: string; name: string }, checked: boolean) => {
+    if (checked) {
+      setEditItems((prev) => [
+        ...prev,
+        {
+          topic_id: topic.id,
+          topic_name: topic.name,
+          target_rating: 4,
+          current_rating: 0,
+          activities: "",
+        },
+      ])
+    } else {
+      setEditItems((prev) => prev.filter((it) => it.topic_id !== topic.id))
+    }
+  }
+
+  const updateEditItemField = (topicId: string, field: keyof EditableItem, value: any) => {
+    setEditItems((prev) =>
+      prev.map((it) => (it.topic_id === topicId ? { ...it, [field]: value } : it)),
+    )
+  }
 
   const handleSaveEdit = async () => {
     if (!selectedPlan) return
@@ -122,6 +168,14 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
           start_date: editStartDate,
           status: editStatus,
           observations: editObservations,
+          items: editItems.map((it) => ({
+            topic_id: it.topic_id,
+            topic_name: it.topic_name,
+            target_rating: it.target_rating,
+            current_rating: it.current_rating,
+            activities: it.activities,
+            existing_id: it.existing_id,
+          })),
         }),
       })
 
@@ -436,44 +490,46 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
 
       {/* Dialog de edicion */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar plan de desarrollo</DialogTitle>
             <DialogDescription>
-              Modifica la configuracion del plan. Los cambios en la duracion o fecha de inicio recalcularan la fecha de finalizacion.
+              Modifica la configuracion del plan y los temas a desarrollar.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-start-date">Fecha de inicio</Label>
-              <Input
-                id="edit-start-date"
-                type="date"
-                value={editStartDate}
-                onChange={(e) => setEditStartDate(e.target.value)}
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start-date">Fecha de inicio</Label>
+                <Input
+                  id="edit-start-date"
+                  type="date"
+                  value={editStartDate}
+                  onChange={(e) => setEditStartDate(e.target.value)}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-duration">Duracion (meses)</Label>
-              <Select
-                value={editDuration.toString()}
-                onValueChange={(value) => setEditDuration(Number(value))}
-              >
-                <SelectTrigger id="edit-duration">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 mes</SelectItem>
-                  <SelectItem value="2">2 meses</SelectItem>
-                  <SelectItem value="3">3 meses</SelectItem>
-                  <SelectItem value="4">4 meses</SelectItem>
-                  <SelectItem value="6">6 meses</SelectItem>
-                  <SelectItem value="9">9 meses</SelectItem>
-                  <SelectItem value="12">12 meses</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="edit-duration">Duracion (meses)</Label>
+                <Select
+                  value={editDuration.toString()}
+                  onValueChange={(value) => setEditDuration(Number(value))}
+                >
+                  <SelectTrigger id="edit-duration">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 mes</SelectItem>
+                    <SelectItem value="2">2 meses</SelectItem>
+                    <SelectItem value="3">3 meses</SelectItem>
+                    <SelectItem value="4">4 meses</SelectItem>
+                    <SelectItem value="6">6 meses</SelectItem>
+                    <SelectItem value="9">9 meses</SelectItem>
+                    <SelectItem value="12">12 meses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -499,6 +555,112 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
                 placeholder="Notas u observaciones del plan"
                 rows={3}
               />
+            </div>
+
+            {/* Seccion de edicion de temas */}
+            <div className="space-y-3 pt-4 border-t">
+              <div>
+                <Label className="text-base font-semibold">Temas a desarrollar</Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Marca los temas que se trabajaran en el plan. Las actividades y el progreso se conservan al desmarcar y volver a marcar un tema existente.
+                </p>
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                {topics.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No hay temas disponibles</p>
+                ) : (
+                  topics.map((topic) => {
+                    const editingItem = editItems.find((it) => it.topic_id === topic.id)
+                    const isChecked = !!editingItem
+
+                    return (
+                      <Card key={topic.id} className={`p-3 ${isChecked ? "border-blue-300 bg-blue-50/50" : ""}`}>
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id={`edit-topic-${topic.id}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => toggleEditTopic(topic, !!checked)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`edit-topic-${topic.id}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              {topic.name}
+                            </label>
+
+                            {isChecked && editingItem && (
+                              <div className="space-y-2 mt-3 pl-2 border-l-2 border-blue-200">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label htmlFor={`edit-target-${topic.id}`} className="text-xs">
+                                      Meta (1-5)
+                                    </Label>
+                                    <Input
+                                      id={`edit-target-${topic.id}`}
+                                      type="number"
+                                      min="1"
+                                      max="5"
+                                      step="0.5"
+                                      value={editingItem.target_rating}
+                                      onChange={(e) =>
+                                        updateEditItemField(
+                                          topic.id,
+                                          "target_rating",
+                                          Number.parseFloat(e.target.value) || 4,
+                                        )
+                                      }
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edit-current-${topic.id}`} className="text-xs">
+                                      Actual
+                                    </Label>
+                                    <Input
+                                      id={`edit-current-${topic.id}`}
+                                      type="number"
+                                      min="0"
+                                      max="5"
+                                      step="0.1"
+                                      value={editingItem.current_rating}
+                                      onChange={(e) =>
+                                        updateEditItemField(
+                                          topic.id,
+                                          "current_rating",
+                                          Number.parseFloat(e.target.value) || 0,
+                                        )
+                                      }
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`edit-activities-${topic.id}`} className="text-xs">
+                                    Actividades
+                                  </Label>
+                                  <Textarea
+                                    id={`edit-activities-${topic.id}`}
+                                    value={editingItem.activities}
+                                    onChange={(e) =>
+                                      updateEditItemField(topic.id, "activities", e.target.value)
+                                    }
+                                    placeholder="Actividades a realizar"
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    )
+                  })
+                )}
+              </div>
             </div>
           </div>
 

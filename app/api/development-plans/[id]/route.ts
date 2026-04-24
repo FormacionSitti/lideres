@@ -5,7 +5,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   try {
     const { id } = params
     const body = await request.json()
-    const { duration_months, status, observations, start_date } = body
+    const { duration_months, status, observations, start_date, items } = body
 
     const supabase = getSupabaseServer()
 
@@ -51,6 +51,76 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (updateError) {
       throw new Error(`Error actualizando plan: ${updateError.message}`)
+    }
+
+    // Sincronizar items si vienen en el body
+    if (Array.isArray(items)) {
+      // Obtener items actuales del plan
+      const { data: existingItems, error: existingError } = await supabase
+        .from("development_plan_items")
+        .select("id, topic_id")
+        .eq("plan_id", id)
+
+      if (existingError) {
+        throw new Error(`Error obteniendo items existentes: ${existingError.message}`)
+      }
+
+      const incomingTopicIds = new Set(items.map((it: any) => it.topic_id))
+      const existingByTopicId = new Map((existingItems || []).map((it: any) => [it.topic_id, it.id]))
+
+      // 1. Eliminar items que ya no estan en la lista entrante
+      const idsToDelete = (existingItems || [])
+        .filter((it: any) => !incomingTopicIds.has(it.topic_id))
+        .map((it: any) => it.id)
+
+      if (idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("development_plan_items")
+          .delete()
+          .in("id", idsToDelete)
+
+        if (deleteError) {
+          throw new Error(`Error eliminando items: ${deleteError.message}`)
+        }
+      }
+
+      // 2. Actualizar items existentes o insertar nuevos
+      for (const item of items) {
+        const existingId = existingByTopicId.get(item.topic_id)
+
+        if (existingId) {
+          // Update
+          const { error: itemUpdateError } = await supabase
+            .from("development_plan_items")
+            .update({
+              target_rating: item.target_rating,
+              current_rating: item.current_rating,
+              activities: item.activities || "",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingId)
+
+          if (itemUpdateError) {
+            throw new Error(`Error actualizando item: ${itemUpdateError.message}`)
+          }
+        } else {
+          // Insert
+          const { error: itemInsertError } = await supabase
+            .from("development_plan_items")
+            .insert({
+              plan_id: id,
+              topic_id: item.topic_id,
+              target_rating: item.target_rating,
+              current_rating: item.current_rating || 0,
+              progress: 0,
+              activities: item.activities || "",
+            })
+
+          if (itemInsertError) {
+            throw new Error(`Error insertando item: ${itemInsertError.message}`)
+          }
+        }
+      }
     }
 
     return NextResponse.json({ success: true, data: updatedPlan })

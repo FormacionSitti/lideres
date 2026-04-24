@@ -70,11 +70,12 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
     }
   }
 
-  const handleSelectLeader = (leaderId: string) => {
+  const handleSelectLeader = async (leaderId: string) => {
     const leader = leaders.find((l) => l.id.toString() === leaderId)
     if (leader) {
       setSelectedLeader(leader)
-      fetchLeaderFollowups(leader.id)
+      // Esperar a que los followups se carguen antes de mostrar el formulario
+      await fetchLeaderFollowups(leader.id)
       setView("form")
     }
   }
@@ -88,17 +89,21 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
       })
       if (response.ok) {
         const { data } = await response.json()
-        const formattedFollowups = data.map((followup: any) => ({
+        console.log("[v0] Followups recibidos:", data?.length || 0, "para lider:", leaderId)
+        const formattedFollowups = (data || []).map((followup: any) => ({
           ...followup,
-          topics: followup.followup_topics.map((ft: any) => ({
-            name: ft.topics.name,
-            rating: ft.rating,
+          topics: (followup.followup_topics || []).map((ft: any) => ({
+            name: ft.topics?.name || "",
+            rating: ft.rating || 0,
           })),
         }))
+        console.log("[v0] Followups formateados:", formattedFollowups)
         setLeaderFollowups(formattedFollowups)
+      } else {
+        console.error("[v0] Error fetch followups status:", response.status)
       }
     } catch (error) {
-      console.error("Error fetching followups:", error)
+      console.error("[v0] Error fetching followups:", error)
     }
   }
 
@@ -178,8 +183,21 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
         <DevelopmentPlanViewer
           plans={[selectedPlan]}
           leaders={leaders}
+          topics={topics}
           onUpdate={async () => {
             await loadPlans()
+            // Sincronizar el plan seleccionado con el actualizado
+            const refreshed = await fetch("/api/development-plans")
+            if (refreshed.ok) {
+              const { data } = await refreshed.json()
+              const updated = (data || []).find((p: any) => p.id === selectedPlan.id)
+              if (updated) {
+                setSelectedPlan({
+                  ...updated,
+                  leader_name: leaders.find((l) => l.id === updated.leader_id)?.name || "",
+                })
+              }
+            }
           }}
         />
       </Card>
