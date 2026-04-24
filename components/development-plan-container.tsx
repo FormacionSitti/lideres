@@ -40,7 +40,7 @@ interface DevelopmentPlan {
   }>
 }
 
-export function DevelopmentPlanContainer({ leaders, topics }: DevelopmentPlanContainerProps) {
+export function DevelopmentPlanContainer({ leaders = [], topics = [] }: DevelopmentPlanContainerProps) {
   const [view, setView] = useState<"list" | "form" | "viewer">("list")
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null)
   const [leaderFollowups, setLeaderFollowups] = useState<Followup[]>([])
@@ -219,7 +219,7 @@ export function DevelopmentPlanContainer({ leaders, topics }: DevelopmentPlanCon
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{plan.leader_name}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {plan.duration_months} meses • {plan.items.length} temas a fortalecer
+                      {plan.duration_months} meses • {plan.items?.length || 0} temas a fortalecer
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(plan.start_date).toLocaleDateString('es-ES')} - {new Date(plan.end_date).toLocaleDateString('es-ES')}
