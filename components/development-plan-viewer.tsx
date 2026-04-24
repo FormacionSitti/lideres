@@ -1,7 +1,10 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
@@ -14,6 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { AlertCircle, CheckCircle, TrendingUp, Trash2, Edit2 } from "lucide-react"
 import { format, parseISO, differenceInDays } from "date-fns"
 import { es } from "date-fns/locale"
@@ -51,6 +62,12 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
   const [selectedPlanId, setSelectedPlanId] = useState<string>(plans[0]?.id || "")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editDuration, setEditDuration] = useState<number>(3)
+  const [editStartDate, setEditStartDate] = useState<string>("")
+  const [editStatus, setEditStatus] = useState<string>("active")
+  const [editObservations, setEditObservations] = useState<string>("")
   const { toast } = useToast()
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId)
@@ -81,6 +98,53 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
       statusColor: isOnTrack ? "green" : "amber",
     }
   }, [selectedPlan])
+
+  // Inicializar los valores del formulario cuando se abre el dialogo de edicion
+  useEffect(() => {
+    if (showEditDialog && selectedPlan) {
+      setEditDuration(selectedPlan.duration_months)
+      setEditStartDate(selectedPlan.start_date)
+      setEditStatus(selectedPlan.status)
+      setEditObservations(selectedPlan.observations || "")
+    }
+  }, [showEditDialog, selectedPlan])
+
+  const handleSaveEdit = async () => {
+    if (!selectedPlan) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/development-plans/${selectedPlan.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          duration_months: editDuration,
+          start_date: editStartDate,
+          status: editStatus,
+          observations: editObservations,
+        }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Exito",
+          description: "Plan actualizado correctamente",
+        })
+        setShowEditDialog(false)
+        await onUpdate()
+      } else {
+        throw new Error("Error al actualizar")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el plan",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleDeletePlan = async () => {
     if (!selectedPlan) return
@@ -349,7 +413,11 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
             </div>
 
             <div className="flex gap-2 mt-6 pt-6 border-t">
-              <Button variant="outline" className="flex-1" disabled>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowEditDialog(true)}
+              >
                 <Edit2 className="w-4 h-4 mr-2" />
                 Editar plan
               </Button>
@@ -365,6 +433,93 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog de edicion */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar plan de desarrollo</DialogTitle>
+            <DialogDescription>
+              Modifica la configuracion del plan. Los cambios en la duracion o fecha de inicio recalcularan la fecha de finalizacion.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-start-date">Fecha de inicio</Label>
+              <Input
+                id="edit-start-date"
+                type="date"
+                value={editStartDate}
+                onChange={(e) => setEditStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-duration">Duracion (meses)</Label>
+              <Select
+                value={editDuration.toString()}
+                onValueChange={(value) => setEditDuration(Number(value))}
+              >
+                <SelectTrigger id="edit-duration">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 mes</SelectItem>
+                  <SelectItem value="2">2 meses</SelectItem>
+                  <SelectItem value="3">3 meses</SelectItem>
+                  <SelectItem value="4">4 meses</SelectItem>
+                  <SelectItem value="6">6 meses</SelectItem>
+                  <SelectItem value="9">9 meses</SelectItem>
+                  <SelectItem value="12">12 meses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Estado</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Activo</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                  <SelectItem value="suspended">Suspendido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-observations">Observaciones</Label>
+              <Textarea
+                id="edit-observations"
+                value={editObservations}
+                onChange={(e) => setEditObservations(e.target.value)}
+                placeholder="Notas u observaciones del plan"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de confirmación para eliminar */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
