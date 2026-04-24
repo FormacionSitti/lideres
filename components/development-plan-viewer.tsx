@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { AlertCircle, CheckCircle, TrendingUp, Calendar, Trash2, Edit2 } from "lucide-react"
+import { AlertCircle, CheckCircle, TrendingUp, Trash2, Edit2 } from "lucide-react"
 import { format, parseISO, differenceInDays } from "date-fns"
 import { es } from "date-fns/locale"
 import { DevelopmentPlanProgress } from "@/components/development-plan-progress"
@@ -23,6 +23,7 @@ import { useToast } from "@/components/ui/use-toast"
 interface DevelopmentPlan {
   id: string
   leader_id: number
+  leader_name?: string
   start_date: string
   end_date: string
   duration_months: number
@@ -53,7 +54,10 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
   const { toast } = useToast()
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId)
-  const leader = leaders.find((l) => l.id === selectedPlan?.leader_id)
+  const leaderName =
+    selectedPlan?.leader_name ||
+    leaders.find((l) => l.id === selectedPlan?.leader_id)?.name ||
+    "Líder"
 
   // Calcular progreso y fecha estimada
   const planProgress = useMemo(() => {
@@ -134,7 +138,7 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
     }
   }
 
-  if (!selectedPlan || !leader || !planProgress) {
+  if (!selectedPlan || !planProgress) {
     return (
       <div className="text-center py-8 text-gray-500">
         No hay planes de desarrollo disponibles para este líder
@@ -175,7 +179,7 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
           <Card className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-semibold mb-1">{leader.name}</h3>
+                <h3 className="text-lg font-semibold mb-1">{leaderName}</h3>
                 <p className="text-sm text-gray-500">
                   {selectedPlan.duration_months} meses • {format(parseISO(selectedPlan.start_date), "d MMM", { locale: es })}{" "}
                   - {format(parseISO(selectedPlan.end_date), "d MMM yyyy", { locale: es })}
@@ -303,7 +307,7 @@ export function DevelopmentPlanViewer({ plans, leaders, onUpdate }: DevelopmentP
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Líder</label>
-                <p className="text-gray-600">{leader.name}</p>
+                  <p className="text-gray-600">{leaderName}</p>
               </div>
 
               <div>

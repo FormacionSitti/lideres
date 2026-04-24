@@ -58,7 +58,12 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
       const response = await fetch("/api/development-plans")
       if (response.ok) {
         const { data } = await response.json()
-        setPlans(data || [])
+        // Enriquecer planes con el nombre del líder desde la lista local
+        const enriched = (data || []).map((plan: DevelopmentPlan) => ({
+          ...plan,
+          leader_name: leaders.find((l) => l.id === plan.leader_id)?.name || plan.leader_name || "",
+        }))
+        setPlans(enriched)
       }
     } catch (error) {
       console.error("Error loading plans:", error)
@@ -107,8 +112,12 @@ export function DevelopmentPlanContainer({ leaders = [], topics = [] }: Developm
 
       if (response.ok) {
         const { data: newPlan } = await response.json()
-        setPlans((prev) => [...prev, newPlan])
-        setSelectedPlan(newPlan)
+        const planWithLeader = {
+          ...newPlan,
+          leader_name: selectedLeader?.name || "",
+        }
+        setPlans((prev) => [...prev, planWithLeader])
+        setSelectedPlan(planWithLeader)
         setView("viewer")
         toast({
           title: "Éxito",

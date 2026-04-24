@@ -27,23 +27,29 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  // Calcular promedio actual de calificaciones por tema
+  // Calcular promedio actual de calificaciones por tema usando el NOMBRE del tema
+  // Los followups almacenan topics por nombre, no por id
   const currentAverages = useMemo(() => {
     const averages: Record<string, number> = {}
     topics.forEach((topic) => {
       const ratings = followups
-        .flatMap((f) => f.topics.filter((t) => t.name === topic.name).map((t) => t.rating))
+        .flatMap((f) =>
+          f.topics
+            .filter((t) => t.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ===
+              topic.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())
+            .map((t) => t.rating)
+        )
         .filter((r) => r > 0)
-      averages[topic.id] = ratings.length > 0 ? ratings.reduce((a, b) => a + b) / ratings.length : 0
+      averages[topic.id] = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
     })
     return averages
   }, [followups, topics])
 
-  // Seleccionar solo temas con bajo desempeño (promedio < 3)
+  // Seleccionar solo temas con bajo desempeño (promedio < 3.5)
   const lowPerformanceTopics = useMemo(() => {
     return topics.filter((topic) => {
       const avg = currentAverages[topic.id] || 0
-      return avg > 0 && avg < 3
+      return avg > 0 && avg < 3.5
     })
   }, [topics, currentAverages])
 
@@ -77,11 +83,16 @@ export function DevelopmentPlanForm({ leader, followups, topics, onSave }: Devel
       const planData = {
         leader_id: leader.id,
         duration_months: durationMonths,
-        selected_topics: selectedTopics.map((topicId) => ({
-          id: topicId,
-          target_rating: targetRatings[topicId] || 4,
-          activities: activities[topicId] || "",
-        })),
+        selected_topics: selectedTopics.map((topicId) => {
+          const topic = topics.find((t) => t.id === topicId)
+          return {
+            id: topicId,
+            topic_name: topic?.name || "",
+            target_rating: targetRatings[topicId] || 4,
+            current_rating: currentAverages[topicId] || 0,
+            activities: activities[topicId] || "",
+          }
+        }),
         observations,
       }
 

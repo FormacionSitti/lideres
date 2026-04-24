@@ -39,36 +39,36 @@ export async function POST(request: Request) {
       throw new Error(`Error creando plan: ${planError.message}`)
     }
 
-    // Crear items del plan
-    if (selected_topics && selected_topics.length > 0) {
-      const itemsData = selected_topics.map((item: any) => ({
-        plan_id: plan.id,
-        topic_id: item.id,
-        target_rating: item.target_rating || 4,
-        current_rating: 0,
-        progress: 0,
-        activities: item.activities || "",
-      }))
+    // Crear items del plan con current_rating inicial del seguimiento
+    const itemsData = selected_topics.map((item: any) => ({
+      plan_id: plan.id,
+      topic_id: item.id,
+      target_rating: item.target_rating || 4,
+      current_rating: item.current_rating || 0,
+      progress: 0,
+      activities: item.activities || "",
+    }))
 
-      const { error: itemsError } = await supabase
-        .from("development_plan_items")
-        .insert(itemsData)
+    const { data: insertedItems, error: itemsError } = await supabase
+      .from("development_plan_items")
+      .insert(itemsData)
+      .select()
 
-      if (itemsError) {
-        throw new Error(`Error creando items: ${itemsError.message}`)
-      }
+    if (itemsError) {
+      throw new Error(`Error creando items: ${itemsError.message}`)
     }
 
     return NextResponse.json({
       success: true,
       data: {
         ...plan,
-        items: selected_topics.map((item: any) => ({
-          id: item.id,
+        leader_name: "",
+        items: selected_topics.map((item: any, idx: number) => ({
+          id: insertedItems?.[idx]?.id || item.id,
           topic_id: item.id,
           topic_name: item.topic_name || "",
           target_rating: item.target_rating || 4,
-          current_rating: 0,
+          current_rating: item.current_rating || 0,
           progress: 0,
           activities: item.activities || "",
         })),
@@ -119,7 +119,22 @@ export async function GET(request: Request) {
       throw new Error(`Error obteniendo planes: ${error.message}`)
     }
 
-    return NextResponse.json({ data })
+    // Formatear items para incluir topic_name y leader_name
+    const formattedData = (data || []).map((plan: any) => ({
+      ...plan,
+      overall_progress: plan.overall_progress || 0,
+      items: (plan.development_plan_items || []).map((item: any) => ({
+        id: item.id,
+        topic_id: item.topic_id,
+        topic_name: item.topics?.name || "",
+        target_rating: item.target_rating || 0,
+        current_rating: item.current_rating || 0,
+        progress: item.progress || 0,
+        activities: item.activities || "",
+      })),
+    }))
+
+    return NextResponse.json({ data: formattedData })
   } catch (error: any) {
     console.error("Error en GET /api/development-plans:", error)
     return NextResponse.json(
