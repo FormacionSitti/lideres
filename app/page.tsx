@@ -67,19 +67,17 @@ async function getLeaders() {
   try {
     const supabase = getSupabaseClient()
     const { data, error } = await supabase.from("leaders").select("id, name").order("name")
-
     if (error) {
       if (error.message.includes('Invalid') || error.code === 'PGRST301') {
         throw new Error(`Error de autenticación con Supabase. Verifica que SUPABASE_KEY sea válida.`)
       }
       throw new Error(`Error cargando líderes: ${error.message}`)
     }
-
     return data || []
   } catch (error: any) {
     const errorMsg = error?.message || String(error)
     if (errorMsg.includes('521') || errorMsg.includes('Web server is down')) {
-      throw new Error("Error 521: El servidor de Supabase está caído o el proyecto está pausado. Ve a supabase.com/dashboard para reactivarlo.")
+      throw new Error("Error 521: El servidor de Supabase está caído o el proyecto está pausado.")
     }
     if (errorMsg.includes('Invalid')) {
       throw new Error("Credenciales de Supabase inválidas. Verifica NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.")
@@ -92,19 +90,17 @@ async function getTopics() {
   try {
     const supabase = getSupabaseClient()
     const { data, error } = await supabase.from("topics").select("id, name").order("name")
-
     if (error) {
       if (error.message.includes('Invalid') || error.code === 'PGRST301') {
         throw new Error(`Error de autenticación con Supabase. Verifica que SUPABASE_KEY sea válida.`)
       }
       throw new Error(`Error cargando temas: ${error.message}`)
     }
-
     return data || []
   } catch (error: any) {
     const errorMsg = error?.message || String(error)
     if (errorMsg.includes('521') || errorMsg.includes('Web server is down')) {
-      throw new Error("Error 521: El servidor de Supabase está caído o el proyecto está pausado. Ve a supabase.com/dashboard para reactivarlo.")
+      throw new Error("Error 521: El servidor de Supabase está caído o el proyecto está pausado.")
     }
     if (errorMsg.includes('Invalid')) {
       throw new Error("Credenciales de Supabase inválidas. Verifica NEXT_PUBLIC_SUPABASE_URL y SUPABASE_KEY en Vercel.")
@@ -118,11 +114,8 @@ async function getData() {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Timeout obteniendo datos")), 10000),
     )
-
     const dataPromise = Promise.all([getLeaders(), getTopics()])
-
     const [leaders, topics] = (await Promise.race([dataPromise, timeoutPromise])) as [any, any]
-
     return { leaders, topics }
   } catch (error) {
     console.error("Error obteniendo datos:", error)
@@ -139,6 +132,12 @@ export default async function Page() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-semibold">Panel de Seguimientos</h1>
           <div className="flex items-center gap-2">
+            <a
+              href="/plan-desarrollo"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              📋 Plan de Desarrollo
+            </a>
             <ResetButton />
           </div>
         </div>
