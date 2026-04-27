@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
 import {
-  CheckCircle, Circle, Users, Heart, Eye, Target,
+  CheckCircle, Circle, Users, MessageCircle, GraduationCap,
+  Zap, Wrench, Sparkles, Compass, Target,
   ChevronDown, ChevronRight, AlertTriangle, TrendingUp,
   CheckSquare, XCircle, Clock, Cloud, CloudOff, RefreshCw
 } from "lucide-react"
@@ -35,43 +36,94 @@ interface DevelopmentPlanProps {
 
 const MODULES = [
   {
-    id: "diagnostico", title: "Diagnóstico de Relación",
-    icon: "eye", weeks: "1-2",
+    id: "liderazgo", title: "Liderazgo cercano",
+    icon: "users", weeks: "1-2",
     colorBg: "bg-blue-100", colorText: "text-blue-600", colorBar: "bg-blue-500", colorDot: "bg-blue-500",
     colorBorder: "border-blue-200", colorFill: "bg-blue-500",
-    objective: "Entender la perspectiva actual del equipo e identificar barreras específicas",
+    objective: "Mide la gestión del líder con el equipo. Construir presencia, escucha activa y vínculo de confianza con cada integrante.",
     actions: [
-      { id: "diag1", week: 1, text: "Realizar conversaciones uno a uno individuales con cada miembro (45 min c/u)", howTo: ["Reservar sala privada, sin interrupciones", "Iniciar: 'Esta conversación es para entenderte mejor'", "Tomar notas en formato estructurado"], deliverable: "Matriz de insights por persona", questions: ["¿Cómo percibes mi estilo de liderazgo?", "¿En qué momentos te sientes más conectado?", "¿Qué necesitas de mí para sentirte más apoyado?"] },
-      { id: "diag2", week: 1, text: "Mapear dinámicas grupales y roles informales del equipo", howTo: ["Observar 3 reuniones sin intervenir", "Registrar quién habla con quién, quién influye", "Identificar líderes informales"], deliverable: "Sociograma del equipo" },
-      { id: "diag3", week: 2, text: "Identificar momentos críticos donde se rompe la conexión", howTo: ["Listar últimas 10 interacciones tensas", "Documentar: Fecha, Personas, Qué ocurrió", "Buscar patrones de comportamiento"], deliverable: "Cronología de desconexión con patrones" },
-      { id: "diag4", week: 2, text: "Autoevaluación: analizar patrones propios de comunicación", howTo: ["Documentar 3 reuniones diferentes", "Análisis: interrupciones, % tiempo hablando", "Identificar muletillas condescendientes"], deliverable: "Plan de autoconciencia con 3 patrones problemáticos" },
+      { id: "lid1", week: 1, text: "Realizar conversaciones uno a uno con cada miembro del equipo (45 min)", howTo: ["Agendar en bloques sin interrupciones", "Indagar: trabajo, motivación y necesidades de apoyo", "Tomar notas estructuradas por persona"], deliverable: "Matriz de insights individuales por colaborador", questions: ["¿Qué necesitas de mí como líder?", "¿En qué momentos te sientes más apoyado?", "¿Qué barreras estás enfrentando hoy?"] },
+      { id: "lid2", week: 1, text: "Mapear estilos de trabajo y necesidades individuales", howTo: ["Identificar perfil de cada miembro (autónomo, colaborativo, directivo)", "Adaptar estilo de gestión por persona", "Documentar preferencias de comunicación"], deliverable: "Mapa de estilos del equipo" },
+      { id: "lid3", week: 2, text: "Establecer rutinas de presencia activa con el equipo", howTo: ["Saludo intencional al inicio del día", "Bloquear 30 min/día para estar disponible en piso", "Visitar cada puesto al menos 1 vez por semana"], deliverable: "Calendario de presencia activa" },
+      { id: "lid4", week: 2, text: "Habilitar canal directo y accesible de feedback ascendente", howTo: ["Definir canal (chat, formulario anónimo, buzón)", "Comunicarlo formalmente al equipo", "Responder cada feedback en menos de 48h"], deliverable: "Canal de feedback ascendente activo" },
     ]
   },
   {
-    id: "construccion", title: "Construcción de Puentes",
-    icon: "heart", weeks: "3-5",
+    id: "comunicacion", title: "Comunicación",
+    icon: "message", weeks: "2-3",
+    colorBg: "bg-cyan-100", colorText: "text-cyan-600", colorBar: "bg-cyan-500", colorDot: "bg-cyan-500",
+    colorBorder: "border-cyan-200", colorFill: "bg-cyan-500",
+    objective: "Mide la alineación estratégica del equipo. Asegurar que todos comparten el mismo norte y entienden su rol en el resultado.",
+    actions: [
+      { id: "com1", week: 2, text: "Definir y comunicar la visión estratégica del equipo", howTo: ["Redactar visión en 1 frase clara y memorable", "Conectarla con objetivos trimestrales", "Presentarla al equipo en reunión dedicada"], deliverable: "Documento de visión y narrativa estratégica" },
+      { id: "com2", week: 2, text: "Estructurar reunión semanal de alineación con agenda fija", howTo: ["Día y hora fijos, máximo 45 min", "Agenda: prioridades, bloqueos, métricas, acuerdos", "Acta breve enviada en menos de 2h"], deliverable: "Plantilla de agenda y actas semanales" },
+      { id: "com3", week: 3, text: "Implementar protocolo de comunicación clara: qué, quién, cuándo", howTo: ["Definir canales por tipo de mensaje (urgente, informativo, decisión)", "Documentar acuerdos de respuesta", "Difundir el protocolo y revisarlo con el equipo"], deliverable: "Manual de comunicación del equipo" },
+      { id: "com4", week: 3, text: "Auditar comunicación actual e identificar brechas de alineación", howTo: ["Encuesta corta al equipo sobre claridad estratégica", "Identificar 3 mensajes que se entienden distinto", "Plan de cierre de brechas"], deliverable: "Reporte de auditoría de comunicación" },
+    ]
+  },
+  {
+    id: "aprendizaje", title: "Cultura de aprendizaje",
+    icon: "book", weeks: "3-4",
     colorBg: "bg-green-100", colorText: "text-green-600", colorBar: "bg-green-500", colorDot: "bg-green-500",
     colorBorder: "border-green-200", colorFill: "bg-green-500",
-    objective: "Implementar acciones específicas para generar cercanía y confianza",
+    objective: "Mide el aprendizaje a nivel de equipo. Convertir cada experiencia y error en conocimiento útil para todos.",
     actions: [
-      { id: "const1", week: 3, text: "Implementar 'Revisión emocional' al inicio de reuniones", howTo: ["Guión: 'En UNA palabra, ¿cómo llegan hoy?'", "Implementar en TODAS las reuniones por 2 semanas", "Llevar registro de participación"], deliverable: "Protocolo de revisión emocional" },
-      { id: "const2", week: 3, text: "Crear rituales de reconocimiento individual y grupal", howTo: ["Momento fijo: viernes 4pm", "Formato 'Destacado': una persona diferente cada semana", "'Esta semana [Nombre] brilló cuando...'"], deliverable: "Sistema de reconocimiento semanal" },
-      { id: "const3", week: 4, text: "Establecer 'Horas de oficina abierta' para conversaciones informales", howTo: ["Bloquear martes y jueves 3-4pm", "Sin agenda, solo conversación", "Primeros 10 min sobre temas NO laborales"], deliverable: "Calendario de disponibilidad" },
-      { id: "const4", week: 5, text: "Participar activamente en espacios informales del equipo", howTo: ["Identificar espacios informales existentes", "Participar sin agenda de trabajo", "Escuchar más que hablar"], deliverable: "Mapa de espacios informales" },
-      { id: "const5", week: 5, text: "Evaluar y ajustar estrategias basado en feedback inicial", howTo: ["Mini-encuesta de pulse al equipo", "Analizar datos de participación", "Identificar qué estrategias funcionan mejor"], deliverable: "Reporte de evaluación intermedia" },
+      { id: "apr1", week: 3, text: "Crear espacio quincenal de aprendizaje compartido", howTo: ["Sesión de 30 min cada 2 semanas", "Cada vez un miembro presenta un tema o caso", "Capturar 3 takeaways accionables"], deliverable: "Calendario de sesiones y bitácora de takeaways" },
+      { id: "apr2", week: 3, text: "Implementar retrospectivas regulares del equipo", howTo: ["Frecuencia: mensual mínimo", "Formato: qué funcionó, qué no, qué cambiamos", "Definir 1-3 acciones concretas con responsable"], deliverable: "Acta de retrospectiva con acciones" },
+      { id: "apr3", week: 4, text: "Establecer mentorías cruzadas internas", howTo: ["Mapear fortalezas complementarias del equipo", "Crear duplas mentor-aprendiz por 8 semanas", "Facilitar primera sesión de cada dupla"], deliverable: "Red de mentorías internas" },
+      { id: "apr4", week: 4, text: "Documentar lecciones aprendidas de proyectos clave", howTo: ["Plantilla simple: contexto, decisión, resultado, lección", "Repositorio compartido y accesible", "Revisar el banco de lecciones cada mes"], deliverable: "Repositorio de lecciones aprendidas" },
     ]
   },
   {
-    id: "fortalecimiento", title: "Fortalecimiento de Vínculos",
-    icon: "users", weeks: "6-8",
-    colorBg: "bg-purple-100", colorText: "text-purple-600", colorBar: "bg-purple-500", colorDot: "bg-purple-500",
-    colorBorder: "border-purple-200", colorFill: "bg-purple-500",
-    objective: "Consolidar relaciones sólidas y sostenibles con el equipo",
+    id: "decisiones", title: "Toma de decisiones ágil y efectiva",
+    icon: "zap", weeks: "4-5",
+    colorBg: "bg-amber-100", colorText: "text-amber-600", colorBar: "bg-amber-500", colorDot: "bg-amber-500",
+    colorBorder: "border-amber-200", colorFill: "bg-amber-500",
+    objective: "Mide la rapidez y criterio en decisiones. Decidir mejor y más rápido sin sacrificar calidad ni alineación.",
     actions: [
-      { id: "fort1", week: 6, text: "Crear sistema de feedback continuo bidireccional", howTo: ["Check-in semanal de 10 minutos por persona", "Formato: ¿Cómo te sientes? ¿Qué necesitas? ¿Cómo voy yo?", "Canal digital para feedback anónimo"], deliverable: "Protocolo de feedback bidireccional" },
-      { id: "fort2", week: 6, text: "Diseñar experiencias de equipo significativas", howTo: ["Co-crear con el equipo una actividad mensual", "Alternar desarrollo profesional y team building", "Asegurar participación de todos"], deliverable: "Calendario anual de experiencias" },
-      { id: "fort3", week: 7, text: "Establecer mentorías cruzadas dentro del equipo", howTo: ["Mapear fortalezas complementarias", "Crear duplas de mentoría mutua por 3 meses", "Facilitar primera sesión de cada dupla"], deliverable: "Red de mentorías internas" },
-      { id: "fort4", week: 8, text: "Crear rituales de cierre y continuidad", howTo: ["Ritual semanal de cierre que celebre logros", "Manual del equipo con valores acordados", "Sistema de seguimiento trimestral"], deliverable: "Manual del equipo y seguimiento cultural" },
+      { id: "dec1", week: 4, text: "Definir framework de toma de decisiones (RACI o similar)", howTo: ["Listar tipos de decisiones recurrentes", "Asignar Responsable, Aprobador, Consultado, Informado", "Difundir y validar con el equipo"], deliverable: "Matriz RACI del equipo" },
+      { id: "dec2", week: 4, text: "Identificar y eliminar cuellos de botella decisionales", howTo: ["Listar las últimas 10 decisiones lentas", "Identificar dónde se atascó cada una", "Definir nuevo flujo o delegación"], deliverable: "Plan de aceleración decisional" },
+      { id: "dec3", week: 5, text: "Empoderar al equipo con autonomía decisional clara", howTo: ["Definir umbrales: qué decide cada rol sin escalar", "Comunicar y respaldar las decisiones tomadas", "Revisar resultados sin micro-gestionar"], deliverable: "Documento de niveles de autonomía" },
+      { id: "dec4", week: 5, text: "Establecer indicadores de calidad y velocidad de decisiones", howTo: ["Definir 2-3 métricas (tiempo de ciclo, reversiones, impacto)", "Tablero visible al equipo", "Revisión mensual de tendencias"], deliverable: "Dashboard de decisiones" },
+    ]
+  },
+  {
+    id: "resolucion", title: "Resolución táctico-estratégica de problemas",
+    icon: "wrench", weeks: "5-6",
+    colorBg: "bg-orange-100", colorText: "text-orange-600", colorBar: "bg-orange-500", colorDot: "bg-orange-500",
+    colorBorder: "border-orange-200", colorFill: "bg-orange-500",
+    objective: "Mide la capacidad de resolver problemas estructurales. Atacar las causas raíz y diseñar soluciones sistémicas, no parches.",
+    actions: [
+      { id: "res1", week: 5, text: "Mapear problemas estructurales recurrentes del área", howTo: ["Listar los 10 problemas más frecuentes en 90 días", "Clasificar: táctico vs estructural", "Priorizar por impacto y frecuencia"], deliverable: "Matriz de problemas priorizados" },
+      { id: "res2", week: 5, text: "Aplicar análisis de causa raíz a 3 problemas críticos", howTo: ["Usar técnica de 5 Por qués o Ishikawa", "Documentar causas reales (no síntomas)", "Validar hallazgos con el equipo"], deliverable: "Reporte de causa raíz por problema" },
+      { id: "res3", week: 6, text: "Diseñar soluciones sistémicas (no parches)", howTo: ["Para cada causa raíz definir solución de fondo", "Validar viabilidad y recursos requeridos", "Asignar responsable y fecha"], deliverable: "Plan de soluciones estructurales" },
+      { id: "res4", week: 6, text: "Implementar mecanismos de prevención y monitoreo", howTo: ["Definir señales tempranas para cada problema", "Crear tablero de seguimiento", "Revisión quincenal del estado"], deliverable: "Sistema de prevención activo" },
+    ]
+  },
+  {
+    id: "motivacion", title: "Motivación e innovación",
+    icon: "sparkles", weeks: "6-7",
+    colorBg: "bg-rose-100", colorText: "text-rose-600", colorBar: "bg-rose-500", colorDot: "bg-rose-500",
+    colorBorder: "border-rose-200", colorFill: "bg-rose-500",
+    objective: "Mide la capacidad de inspirar y transformar. Activar la energía del equipo y abrir espacios para nuevas ideas.",
+    actions: [
+      { id: "mot1", week: 6, text: "Identificar drivers individuales de motivación", howTo: ["Conversación dirigida con cada miembro (20 min)", "Indagar: logro, autonomía, propósito, dominio, vínculo", "Documentar driver principal de cada persona"], deliverable: "Mapa de motivadores del equipo" },
+      { id: "mot2", week: 6, text: "Crear espacio para ideas e iniciativas del equipo", howTo: ["Buzón o canal de ideas siempre abierto", "Sesión mensual para revisar y priorizar", "Compromiso de respuesta a cada propuesta"], deliverable: "Espacio de ideación activo" },
+      { id: "mot3", week: 7, text: "Implementar reconocimiento por innovación e iniciativa", howTo: ["Definir criterios claros de reconocimiento", "Reconocer públicamente al menos 1 caso por mes", "Mezclar reconocimiento simbólico y tangible"], deliverable: "Programa de reconocimiento por innovación" },
+      { id: "mot4", week: 7, text: "Diseñar reto trimestral de innovación", howTo: ["Definir desafío conectado al negocio", "Equipos pequeños proponen soluciones", "Espacio final para presentar e implementar la mejor"], deliverable: "Reto de innovación lanzado" },
+    ]
+  },
+  {
+    id: "vision", title: "Visión transformadora",
+    icon: "compass", weeks: "7-8",
+    colorBg: "bg-indigo-100", colorText: "text-indigo-600", colorBar: "bg-indigo-500", colorDot: "bg-indigo-500",
+    colorBorder: "border-indigo-200", colorFill: "bg-indigo-500",
+    objective: "Mide la capacidad de evolucionar y mejorar. Anticipar el futuro del área y guiar al equipo hacia un mejor estado.",
+    actions: [
+      { id: "vis1", week: 7, text: "Articular visión transformadora del área a 12 meses", howTo: ["Imaginar el área dentro de 1 año", "Describirla en 3 dimensiones: equipo, procesos, resultados", "Validarla con stakeholders clave"], deliverable: "Documento de visión a 12 meses" },
+      { id: "vis2", week: 7, text: "Identificar oportunidades de evolución del modelo actual", howTo: ["Auditar procesos clave: qué deja de tener sentido", "Comparar con buenas prácticas externas", "Listar 5 oportunidades de transformación"], deliverable: "Lista priorizada de oportunidades" },
+      { id: "vis3", week: 8, text: "Co-crear roadmap de transformación con el equipo", howTo: ["Taller con el equipo para definir hitos trimestrales", "Asignar líderes de cada iniciativa", "Visualizar el roadmap en formato accesible"], deliverable: "Roadmap de transformación a 12 meses" },
+      { id: "vis4", week: 8, text: "Establecer métricas de evolución y mejora continua", howTo: ["Definir 3-5 indicadores de transformación", "Línea base actual y meta a 6 y 12 meses", "Revisión mensual con el equipo"], deliverable: "Tablero de evolución del área" },
     ]
   }
 ]
@@ -92,12 +144,6 @@ function ActionCard({ action, mod, actionsData, onUpdate }: {
 
   useEffect(() => { setLocalNotes(data.notes || "") }, [data.notes])
   useEffect(() => { setLocalGoals(data.goals || "") }, [data.goals])
-
-  const ModIcon = () => {
-    if (mod.icon === "eye") return <Eye className="w-5 h-5" />
-    if (mod.icon === "heart") return <Heart className="w-5 h-5" />
-    return <Users className="w-5 h-5" />
-  }
 
   const EvIcon = () => {
     if (!score) return <Clock className="w-4 h-4 text-gray-400" />
@@ -233,7 +279,7 @@ function ActionCard({ action, mod, actionsData, onUpdate }: {
 
 export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
   const [actionsData, setActionsData] = useState<Record<string, ActionData>>({})
-  const [expandedModule, setExpandedModule] = useState<string | null>("diagnostico")
+  const [expandedModule, setExpandedModule] = useState<string | null>("liderazgo")
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
@@ -322,7 +368,7 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
           </div>
           <div>
             <h3 className="font-bold text-gray-900">{leader.name}</h3>
-            <p className="text-xs text-gray-500">Comunicación Efectiva · 8 semanas</p>
+            <p className="text-xs text-gray-500">Plan integral de liderazgo · 8 semanas · 7 dimensiones</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -375,8 +421,12 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
         const isOpen = expandedModule === mod.id
         const mp = getModProgress(mod.id)
         const ModIcon = () => {
-          if (mod.icon === "eye") return <Eye className="w-5 h-5" />
-          if (mod.icon === "heart") return <Heart className="w-5 h-5" />
+          if (mod.icon === "message") return <MessageCircle className="w-5 h-5" />
+          if (mod.icon === "book") return <GraduationCap className="w-5 h-5" />
+          if (mod.icon === "zap") return <Zap className="w-5 h-5" />
+          if (mod.icon === "wrench") return <Wrench className="w-5 h-5" />
+          if (mod.icon === "sparkles") return <Sparkles className="w-5 h-5" />
+          if (mod.icon === "compass") return <Compass className="w-5 h-5" />
           return <Users className="w-5 h-5" />
         }
         return (
