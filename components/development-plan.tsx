@@ -6,8 +6,17 @@ import {
   CheckCircle, Circle, Users, MessageCircle, GraduationCap,
   Zap, Wrench, Sparkles, Compass, Target,
   ChevronDown, ChevronRight, AlertTriangle, TrendingUp,
-  CheckSquare, XCircle, Clock, Cloud, CloudOff, RefreshCw
+  CheckSquare, XCircle, Clock, Cloud, CloudOff, RefreshCw,
+  Filter, Sparkle
 } from "lucide-react"
+
+function normalizeText(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -279,28 +288,56 @@ function ActionCard({ action, mod, actionsData, onUpdate }: {
 
 export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
   const [actionsData, setActionsData] = useState<Record<string, ActionData>>({})
-  const [expandedModule, setExpandedModule] = useState<string | null>("liderazgo")
+  const [expandedModule, setExpandedModule] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [topicAverages, setTopicAverages] = useState<Record<string, { avg: number; count: number }>>({})
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     setLoading(true)
     setActionsData({})
-    supabase
-      .from("development_actions")
-      .select("*")
-      .eq("leader_id", leader.id)
-      .then(({ data, error }) => {
-        if (!error && data) {
-          const map: Record<string, ActionData> = {}
-          data.forEach((row: any) => { map[row.action_id] = row })
-          setActionsData(map)
-          setLastSync(new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }))
-        }
-        setLoading(false)
-      })
+    setTopicAverages({})
+    setExpandedModule(null)
+
+    Promise.all([
+      supabase.from("development_actions").select("*").eq("leader_id", leader.id),
+      supabase
+        .from("followups")
+        .select("followup_topics (rating, topics (name))")
+        .eq("leader_id", leader.id),
+    ]).then(([actionsRes, followupsRes]) => {
+      if (!actionsRes.error && actionsRes.data) {
+        const map: Record<string, ActionData> = {}
+        actionsRes.data.forEach((row: any) => { map[row.action_id] = row })
+        setActionsData(map)
+        setLastSync(new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }))
+      }
+
+      if (!followupsRes.error && followupsRes.data) {
+        const ratingsMap: Record<string, number[]> = {}
+        followupsRes.data.forEach((f: any) => {
+          f.followup_topics?.forEach((ft: any) => {
+            if (!ft.topics?.name || !ft.rating) return
+            const key = normalizeText(ft.topics.name)
+            if (!ratingsMap[key]) ratingsMap[key] = []
+            ratingsMap[key].push(ft.rating)
+          })
+        })
+        const avgMap: Record<string, { avg: number; count: number }> = {}
+        Object.entries(ratingsMap).forEach(([key, values]) => {
+          avgMap[key] = {
+            avg: values.reduce((a, b) => a + b, 0) / values.length,
+            count: values.length,
+          }
+        })
+        setTopicAverages(avgMap)
+      }
+
+      setLoading(false)
+    })
   }, [leader.id])
 
   const handleUpdate = useCallback(async (actionId: string, payload: Partial<ActionData>) => {
@@ -337,18 +374,54 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
     }
   }, [leader.id, actionsData])
 
-  const totalActions = MODULES.reduce((a, m) => a + m.actions.length, 0)
-  const doneCount = Object.values(actionsData).filter((d) => d.completed).length
-  const progress = Math.round((doneCount / totalActions) * 100)
-  const evalList = Object.values(actionsData).filter((d) => d.evaluation_score)
+  // Anotar cada modulo con su promedio de seguimientos
+  const modulesWithScore = MODULES.map((mod) => {
+    const key = normalizeText(mod.title)
+    const stat = topicAverages[key]
+    return {
+      ...mod,
+      avgScore: stat?.avg ?? null,
+      ratingsCount: stat?.count ?? 0,
+    }
+  })
+
+  const hasAnyFollowupData = Object.keys(topicAverages).length > 0
+  // Umbrales: bajo (<3), medio (3 a <4), alto (>=4)
+  const lowMediumModules = modulesWithScore.filter(
+    (m) => m.avgScore !== null && m.avgScore < 4,
+  )
+  // Si aun no hay seguimientos: mostrar todo. Si hay seguimientos pero todos altos: mostrar todo.
+  // Si hay bajos/medios: mostrar solo esos a menos que el usuario decida ver todos.
+  const visibleModules = !hasAnyFollowupData
+    ? modulesWithScore
+    : showAll || lowMediumModules.length === 0
+      ? modulesWithScore
+      : lowMediumModules
+
+  const totalActions = visibleModules.reduce((a, m) => a + m.actions.length, 0)
+  const visibleActionIds = new Set(visibleModules.flatMap((m) => m.actions.map((a) => a.id)))
+  const doneCount = Object.entries(actionsData).filter(
+    ([id, d]) => d.completed && visibleActionIds.has(id),
+  ).length
+  const progress = totalActions > 0 ? Math.round((doneCount / totalActions) * 100) : 0
+  const evalList = Object.entries(actionsData).filter(
+    ([id, d]) => d.evaluation_score && visibleActionIds.has(id),
+  )
   const avgScore = evalList.length > 0
-    ? (evalList.reduce((s, d) => s + (d.evaluation_score || 0), 0) / evalList.length).toFixed(1)
+    ? (evalList.reduce((s, [, d]) => s + (d.evaluation_score || 0), 0) / evalList.length).toFixed(1)
     : null
 
   const getModProgress = (modId: string) => {
     const mod = MODULES.find((m) => m.id === modId)!
     const done = mod.actions.filter((a) => actionsData[a.id]?.completed).length
     return Math.round((done / mod.actions.length) * 100)
+  }
+
+  const getScoreLevel = (avg: number | null) => {
+    if (avg === null) return null
+    if (avg < 3) return { label: "Crítico", color: "bg-red-100 text-red-700 border-red-200" }
+    if (avg < 4) return { label: "A fortalecer", color: "bg-amber-100 text-amber-700 border-amber-200" }
+    return { label: "Fortaleza", color: "bg-green-100 text-green-700 border-green-200" }
   }
 
   if (loading) return (
@@ -368,7 +441,11 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
           </div>
           <div>
             <h3 className="font-bold text-gray-900">{leader.name}</h3>
-            <p className="text-xs text-gray-500">Plan integral de liderazgo · 8 semanas · 7 dimensiones</p>
+            <p className="text-xs text-gray-500">
+              {hasAnyFollowupData
+                ? `Plan personalizado · ${visibleModules.length} de ${MODULES.length} dimensiones a trabajar`
+                : "Plan integral · 8 semanas · 7 dimensiones"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -416,10 +493,86 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
         </div>
       </div>
 
+      {/* Banner de filtro */}
+      {hasAnyFollowupData && lowMediumModules.length > 0 && !showAll && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3 flex-wrap">
+            <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Filter className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <h4 className="font-semibold text-sm text-amber-900">
+                Plan enfocado en {lowMediumModules.length} {lowMediumModules.length === 1 ? "tema" : "temas"} a fortalecer
+              </h4>
+              <p className="text-xs text-amber-800 mt-1">
+                Según los seguimientos realizados, estos son los aspectos con calificación baja (&lt;3) o media (3 a &lt;4) que requieren acompañamiento prioritario.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAll(true)}
+              className="text-xs font-semibold text-amber-700 hover:text-amber-900 bg-white border border-amber-200 px-3 py-1.5 rounded-lg whitespace-nowrap"
+            >
+              Ver todos los temas
+            </button>
+          </div>
+        </div>
+      )}
+
+      {hasAnyFollowupData && lowMediumModules.length === 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Sparkle className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm text-green-900">
+                Todos los temas evaluados están en nivel alto
+              </h4>
+              <p className="text-xs text-green-800 mt-1">
+                No hay áreas críticas a fortalecer. Se muestra el plan completo para mantener y consolidar las fortalezas del líder.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasAnyFollowupData && showAll && lowMediumModules.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-blue-800">
+            Mostrando todas las dimensiones. Las prioritarias están marcadas como &quot;A fortalecer&quot; o &quot;Crítico&quot;.
+          </p>
+          <button
+            onClick={() => setShowAll(false)}
+            className="text-xs font-semibold text-blue-700 hover:text-blue-900 bg-white border border-blue-200 px-3 py-1.5 rounded-lg"
+          >
+            Ver solo prioritarios
+          </button>
+        </div>
+      )}
+
+      {!hasAnyFollowupData && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-gray-500" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm text-gray-800">
+                Aún no hay seguimientos calificados
+              </h4>
+              <p className="text-xs text-gray-600 mt-1">
+                Una vez que registres seguimientos con calificaciones, este plan se ajustará automáticamente para mostrar primero los temas con calificación baja o media.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modules */}
-      {MODULES.map((mod) => {
+      {visibleModules.map((mod) => {
         const isOpen = expandedModule === mod.id
         const mp = getModProgress(mod.id)
+        const level = getScoreLevel(mod.avgScore)
         const ModIcon = () => {
           if (mod.icon === "message") return <MessageCircle className="w-5 h-5" />
           if (mod.icon === "book") return <GraduationCap className="w-5 h-5" />
@@ -435,16 +588,28 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
               className="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between gap-3"
               onClick={() => setExpandedModule(isOpen ? null : mod.id)}
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${mod.colorBg} ${mod.colorText}`}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${mod.colorBg} ${mod.colorText}`}>
                   <ModIcon />
                 </div>
-                <div>
-                  <h4 className="font-bold text-gray-900">{mod.title}</h4>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-bold text-gray-900">{mod.title}</h4>
+                    {level && (
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${level.color}`}>
+                        {level.label}
+                      </span>
+                    )}
+                    {mod.avgScore !== null && (
+                      <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {mod.avgScore.toFixed(1)}/5 ({mod.ratingsCount})
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs text-gray-500">Semanas {mod.weeks} · {mod.actions.length} acciones</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="text-right">
                   <span className="text-xs font-semibold text-gray-700">{mp}%</span>
                   <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
