@@ -1,9 +1,12 @@
 import { Suspense } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layout } from "@/components/layout"
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 import { FollowupForm } from "@/components/followup-form"
 import { FollowupList } from "@/components/followup-list"
-import { DevelopmentPlanContainer } from "@/components/development-plan-container"
 import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -109,18 +112,34 @@ async function getTopics() {
   }
 }
 
-async function getData() {
+async function getDataWithRetry(attempt = 1, maxAttempts = 3): Promise<{ leaders: any; topics: any }> {
+  const timeoutMs = 25000
   try {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout obteniendo datos")), 10000),
+      setTimeout(() => reject(new Error("Timeout obteniendo datos")), timeoutMs),
     )
     const dataPromise = Promise.all([getLeaders(), getTopics()])
     const [leaders, topics] = (await Promise.race([dataPromise, timeoutPromise])) as [any, any]
     return { leaders, topics }
-  } catch (error) {
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error)
+    const isTransient =
+      errorMsg.includes("Timeout") ||
+      errorMsg.includes("fetch failed") ||
+      errorMsg.includes("ECONNRESET") ||
+      errorMsg.includes("521")
+    if (isTransient && attempt < maxAttempts) {
+      console.log(`[v0] Reintentando obtencion de datos (${attempt}/${maxAttempts - 1})...`)
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+      return getDataWithRetry(attempt + 1, maxAttempts)
+    }
     console.error("Error obteniendo datos:", error)
     throw error
   }
+}
+
+async function getData() {
+  return getDataWithRetry()
 }
 
 export default async function Page() {
@@ -143,10 +162,9 @@ export default async function Page() {
         </div>
 
         <Tabs defaultValue="new" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="new">Nuevo Seguimiento</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
-            <TabsTrigger value="development">Plan de Desarrollo</TabsTrigger>
           </TabsList>
           <TabsContent value="new">
             <Suspense fallback={<LoadingDisplay />}>
@@ -156,11 +174,6 @@ export default async function Page() {
           <TabsContent value="history">
             <Suspense fallback={<LoadingDisplay />}>
               <FollowupList leaders={leaders} />
-            </Suspense>
-          </TabsContent>
-          <TabsContent value="development">
-            <Suspense fallback={<LoadingDisplay />}>
-              <DevelopmentPlanContainer leaders={leaders} topics={topics} />
             </Suspense>
           </TabsContent>
         </Tabs>
