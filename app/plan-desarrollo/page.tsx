@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import DevelopmentPlan from "@/components/development-plan"
+import LeaderFollowupSummary from "@/components/leader-followup-summary"
 import { Target, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -89,6 +90,13 @@ export default function PlanDesarrolloPage() {
             </select>
           )}
         </div>
+
+        {/* Resumen de seguimientos del líder */}
+        {selectedLeader && (
+          <div className="mb-6">
+            <LeaderFollowupSummary leader={selectedLeader} key={`summary-${selectedLeader.id}`} />
+          </div>
+        )}
 
         {/* Plan de Desarrollo */}
         {selectedLeader && (

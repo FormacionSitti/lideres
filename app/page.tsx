@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layout } from "@/components/layout"
 import { FollowupForm } from "@/components/followup-form"
 import { FollowupList } from "@/components/followup-list"
-import { DevelopmentPlanContainer } from "@/components/development-plan-container"
 import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -143,10 +142,9 @@ export default async function Page() {
         </div>
 
         <Tabs defaultValue="new" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="new">Nuevo Seguimiento</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
-            <TabsTrigger value="development">Plan de Desarrollo</TabsTrigger>
           </TabsList>
           <TabsContent value="new">
             <Suspense fallback={<LoadingDisplay />}>
@@ -156,11 +154,6 @@ export default async function Page() {
           <TabsContent value="history">
             <Suspense fallback={<LoadingDisplay />}>
               <FollowupList leaders={leaders} />
-            </Suspense>
-          </TabsContent>
-          <TabsContent value="development">
-            <Suspense fallback={<LoadingDisplay />}>
-              <DevelopmentPlanContainer leaders={leaders} topics={topics} />
             </Suspense>
           </TabsContent>
         </Tabs>
