@@ -5,10 +5,15 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format, differenceInDays, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText } from "lucide-react"
+import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type { Leader, Followup } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
+import { RadarChart, SimpleRadarChart } from "@/components/radar-chart"
+import { CoachingInterpretation } from "@/components/coaching-interpretation"
+import { RadarEvolution } from "@/components/radar-evolution"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 
 interface FollowupListProps {
   leaders: Leader[]
@@ -16,10 +21,16 @@ interface FollowupListProps {
 
 export function FollowupList({ leaders }: FollowupListProps) {
   const [selectedLeader, setSelectedLeader] = useState("")
+  const [selectedLeaders, setSelectedLeaders] = useState<string[]>([])
   const [followups, setFollowups] = useState<Followup[]>([])
+  const [allFollowupsByLeader, setAllFollowupsByLeader] = useState<Record<string, Followup[]>>({})
   const [loading, setLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [showRadar, setShowRadar] = useState(false)
+  const [showEvolution, setShowEvolution] = useState(false)
+  const [showComparison, setShowComparison] = useState(false)
+  const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
   const router = useRouter()
   const { toast } = useToast()
 
@@ -108,8 +119,145 @@ export function FollowupList({ leaders }: FollowupListProps) {
     }
   }, [refreshKey])
 
+  // Calcular datos para el radar cuando cambian los followups
+  useEffect(() => {
+    if (followups.length > 0) {
+      calculateRadarData()
+    } else {
+      setRadarData([])
+      setShowRadar(false)
+    }
+  }, [followups])
+
+  const calculateRadarData = () => {
+    // Agrupar calificaciones por tema
+    const topicRatings: Record<string, { total: number; count: number }> = {}
+
+    followups.forEach((followup) => {
+      followup.topics.forEach((topic) => {
+        if (!topicRatings[topic.name]) {
+          topicRatings[topic.name] = { total: 0, count: 0 }
+        }
+        topicRatings[topic.name].total += topic.rating
+        topicRatings[topic.name].count += 1
+      })
+    })
+
+    // Calcular promedio por tema
+    const data = Object.entries(topicRatings).map(([label, { total, count }]) => ({
+      label,
+      value: Number((total / count).toFixed(2)),
+    }))
+
+    // Ordenar para mejor visualización en el radar
+    const preferredOrder = [
+      "Liderazgo cercano",
+      "Resolución táctico-estratégica de problemas",
+      "Visión transformadora",
+      "Toma de decisiones ágil y efectiva",
+      "Cultura de aprendizaje",
+      "Comunicación",
+      "Motivación e innovación",
+    ]
+
+    data.sort((a, b) => {
+      const indexA = preferredOrder.indexOf(a.label)
+      const indexB = preferredOrder.indexOf(b.label)
+      if (indexA === -1 && indexB === -1) return a.label.localeCompare(b.label)
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return indexA - indexB
+    })
+
+    setRadarData(data)
+  }
+
   const handleContinueFollowup = (followupId: string) => {
     router.push(`/?previous=${followupId}`)
+  }
+
+  // Manejar selección múltiple de líderes
+  const handleLeaderSelection = (leaderId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeaders((prev) => [...prev, leaderId])
+      fetchFollowupsForComparison(leaderId)
+    } else {
+      setSelectedLeaders((prev) => prev.filter((id) => id !== leaderId))
+      setAllFollowupsByLeader((prev) => {
+        const updated = { ...prev }
+        delete updated[leaderId]
+        return updated
+      })
+    }
+  }
+
+  const fetchFollowupsForComparison = async (leaderId: string) => {
+    try {
+      const response = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "getFollowups", data: { leader_id: leaderId } }),
+      })
+
+      if (response.ok) {
+        const { data } = await response.json()
+        const formattedFollowups = data.map((followup: any) => ({
+          ...followup,
+          leader_name: followup.leaders?.name,
+          topics: followup.followup_topics.map((ft: any) => ({
+            name: ft.topics.name,
+            rating: ft.rating,
+          })),
+        }))
+        setAllFollowupsByLeader((prev) => ({ ...prev, [leaderId]: formattedFollowups }))
+      }
+    } catch (error) {
+      console.error("Error fetching followups for comparison:", error)
+    }
+  }
+
+  // Generar datasets para el radar comparativo
+  const getComparisonDatasets = () => {
+    const colors = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2"]
+    const dimensions = [
+      "Liderazgo cercano",
+      "Resolución táctico-estratégica de problemas",
+      "Visión transformadora",
+      "Toma de decisiones ágil y efectiva",
+      "Cultura de aprendizaje",
+      "Comunicación",
+      "Motivación e innovación",
+    ]
+
+    return selectedLeaders.map((leaderId, index) => {
+      const leaderFollowups = allFollowupsByLeader[leaderId] || []
+      const leader = uniqueLeaders.find((l) => l.id.toString() === leaderId)
+
+      // Calcular promedio por dimensión
+      const topicRatings: Record<string, { total: number; count: number }> = {}
+      leaderFollowups.forEach((f) => {
+        f.topics.forEach((t) => {
+          if (!topicRatings[t.name]) {
+            topicRatings[t.name] = { total: 0, count: 0 }
+          }
+          topicRatings[t.name].total += t.rating
+          topicRatings[t.name].count += 1
+        })
+      })
+
+      const data = dimensions.map((dimension) => ({
+        dimension,
+        value: topicRatings[dimension]
+          ? Number((topicRatings[dimension].total / topicRatings[dimension].count).toFixed(2))
+          : 0,
+      }))
+
+      return {
+        label: leader?.name || `Líder ${index + 1}`,
+        data,
+        color: colors[index % colors.length],
+      }
+    })
   }
 
   const formatDateWithTimezone = (dateString: string) => {
@@ -724,7 +872,7 @@ export function FollowupList({ leaders }: FollowupListProps) {
     <Card className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-lg font-semibold">Historial de Seguimientos</h2>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={refreshData} className="flex items-center bg-transparent">
             <RefreshCw className="w-4 h-4 mr-2" />
             Actualizar
@@ -740,98 +888,270 @@ export function FollowupList({ leaders }: FollowupListProps) {
           </Button>
           <Button variant="outline" onClick={exportForPowerBI} disabled={exportLoading}>
             <Database className="w-4 h-4 mr-2" />
-            Exportar para Power BI
-          </Button>
-          {selectedLeader && followups.length > 0 && (
-            <Button variant="outline" onClick={() => exportToExcel(false)} disabled={exportLoading}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar Líder Actual
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => exportToExcel(true)} disabled={exportLoading}>
-            <BarChart className="w-4 h-4 mr-2" />
-            Exportar para Análisis
+            Exportar Power BI
           </Button>
         </div>
       </div>
 
       <div className="space-y-6">
-        <Select value={selectedLeader} onValueChange={handleLeaderChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Seleccionar líder" />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueLeaders.map((leader) => (
-              <SelectItem key={leader.id} value={leader.id.toString()}>
-                {leader.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Modo de vista */}
+        <div className="flex flex-wrap gap-3 border-b pb-4">
+          <Button
+            variant={!showComparison ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setShowComparison(false)
+              setSelectedLeaders([])
+            }}
+          >
+            Ver por Líder
+          </Button>
+          <Button
+            variant={showComparison ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setShowComparison(true)
+              setShowRadar(false)
+              setShowEvolution(false)
+            }}
+          >
+            Comparar Líderes
+          </Button>
+        </div>
+
+        {/* Vista individual */}
+        {!showComparison && (
+          <>
+            <Select value={selectedLeader} onValueChange={handleLeaderChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar líder" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueLeaders.map((leader) => (
+                  <SelectItem key={leader.id} value={leader.id.toString()}>
+                    {leader.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedLeader && followups.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={showRadar && !showEvolution ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowRadar(true)
+                    setShowEvolution(false)
+                  }}
+                  className={showRadar && !showEvolution ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  <PieChart className="w-4 h-4 mr-2" />
+                  Radar Promedio
+                </Button>
+                <Button
+                  variant={showEvolution ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowEvolution(true)
+                    setShowRadar(false)
+                  }}
+                  className={showEvolution ? "bg-purple-600 hover:bg-purple-700" : ""}
+                >
+                  <BarChart className="w-4 h-4 mr-2" />
+                  Ver Evolución
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowRadar(false)
+                    setShowEvolution(false)
+                  }}
+                >
+                  Ver Historial
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => exportToExcel(false)} disabled={exportLoading}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Vista comparativa */}
+        {showComparison && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">Selecciona hasta 5 líderes para comparar:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {uniqueLeaders.map((leader) => (
+                <div key={leader.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`leader-${leader.id}`}
+                    checked={selectedLeaders.includes(leader.id.toString())}
+                    onCheckedChange={(checked) => {
+                      if (checked && selectedLeaders.length >= 5) {
+                        toast({
+                          title: "Límite alcanzado",
+                          description: "Solo puedes comparar hasta 5 líderes",
+                          variant: "destructive",
+                        })
+                        return
+                      }
+                      handleLeaderSelection(leader.id.toString(), checked as boolean)
+                    }}
+                  />
+                  <Label htmlFor={`leader-${leader.id}`} className="text-sm cursor-pointer">
+                    {leader.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            {selectedLeaders.length >= 2 && (
+              <Card className="p-6 mt-4">
+                <h3 className="text-lg font-semibold text-center mb-4">
+                  Comparación de Líderes ({selectedLeaders.length} seleccionados)
+                </h3>
+                <p className="text-sm text-gray-500 text-center mb-6">
+                  Promedio de calificaciones por dimensión (Escala 1-5)
+                </p>
+                <RadarChart
+                  datasets={getComparisonDatasets()}
+                  dimensions={[
+                    "Liderazgo cercano",
+                    "Resolución táctico-estratégica de problemas",
+                    "Visión transformadora",
+                    "Toma de decisiones ágil y efectiva",
+                    "Cultura de aprendizaje",
+                    "Comunicación",
+                    "Motivación e innovación",
+                  ]}
+                  maxValue={5}
+                  size={400}
+                  showLegend={true}
+                />
+              </Card>
+            )}
+
+            {selectedLeaders.length === 1 && (
+              <p className="text-sm text-amber-600 text-center py-4">
+                Selecciona al menos 2 líderes para ver la comparación
+              </p>
+            )}
+          </div>
+        )}
 
         {loading && <div className="text-center py-4 text-muted-foreground">Cargando seguimientos...</div>}
 
-        <div className="space-y-4">
-          {followups.map((followup) => (
-            <Card key={followup.id} className="p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-medium">
-                    Seguimiento #{followup.sequence_number} -{" "}
-                    {followup.type === "acompanamiento" ? "Acompañamiento" : "Felicitaciones"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{formatDateWithTimezone(followup.followup_date)}</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => handleContinueFollowup(followup.id)}>
-                  Continuar Seguimiento
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {followup.observations && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Observaciones:</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{followup.observations}</p>
+        {/* Radar Táctico-Estratégico Individual */}
+        {!showComparison && showRadar && !showEvolution && radarData.length > 0 && selectedLeader && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-center mb-4">
+                Radar Táctico-Estratégico: {uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name}
+              </h3>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Promedio de calificaciones por dimensión (Escala 1-5)
+              </p>
+              <SimpleRadarChart data={radarData} size={380} color="#2563eb" />
+              
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {radarData.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      item.value >= 4 ? "bg-green-100 text-green-700" :
+                      item.value >= 3 ? "bg-blue-100 text-blue-700" :
+                      "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {item.label}: {item.value.toFixed(1)}
                   </div>
-                )}
-
-                {followup.agreements && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Acuerdos:</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{followup.agreements}</p>
-                  </div>
-                )}
-
-                {followup.topics.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-1">Temas trabajados:</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {followup.topics.map((topic, index) => (
-                        <div key={index} className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2">
-                          {topic.name} - Calificación: {topic.rating}/5
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {followup.next_followup_date && (
-                  <div className="text-sm">
-                    <span className="font-medium">Próximo seguimiento: </span>
-                    <span className="text-muted-foreground">{formatDateWithTimezone(followup.next_followup_date)}</span>
-                  </div>
-                )}
+                ))}
               </div>
             </Card>
-          ))}
 
-          {!loading && followups.length === 0 && selectedLeader && (
-            <div className="text-center py-4 text-muted-foreground">
-              No hay seguimientos registrados para este líder.
-            </div>
-          )}
-        </div>
+            <CoachingInterpretation 
+              data={radarData} 
+              leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""} 
+            />
+          </div>
+        )}
+
+        {/* Evolución del Radar */}
+        {!showComparison && showEvolution && selectedLeader && followups.length > 0 && (
+          <RadarEvolution
+            followups={followups}
+            leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""}
+          />
+        )}
+
+        {/* Lista de seguimientos */}
+        {!showComparison && !showRadar && !showEvolution && (
+          <div className="space-y-4">
+            {followups.map((followup) => (
+              <Card key={followup.id} className="p-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-medium">
+                      Seguimiento #{followup.sequence_number} -{" "}
+                      {followup.type === "acompanamiento" ? "Acompañamiento" : "Felicitaciones"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">{formatDateWithTimezone(followup.followup_date)}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleContinueFollowup(followup.id)}>
+                    Continuar Seguimiento
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {followup.observations && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Observaciones:</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{followup.observations}</p>
+                    </div>
+                  )}
+
+                  {followup.agreements && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Acuerdos:</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{followup.agreements}</p>
+                    </div>
+                  )}
+
+                  {followup.topics.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Temas trabajados:</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {followup.topics.map((topic, index) => (
+                          <div key={index} className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2">
+                            {topic.name} - Calificación: {topic.rating}/5
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {followup.next_followup_date && (
+                    <div className="text-sm">
+                      <span className="font-medium">Próximo seguimiento: </span>
+                      <span className="text-muted-foreground">{formatDateWithTimezone(followup.next_followup_date)}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+
+            {!loading && followups.length === 0 && selectedLeader && (
+              <div className="text-center py-4 text-muted-foreground">
+                No hay seguimientos registrados para este líder.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   )

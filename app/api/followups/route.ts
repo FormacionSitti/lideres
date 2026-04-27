@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { supabaseServer } from "@/lib/supabase-server"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -9,7 +9,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Leader ID is required" }, { status: 400 })
   }
 
-  const { data: followups, error } = await supabaseServer
+  const supabase = getSupabaseServer()
+  const { data: followups, error } = await supabase
     .from("followups")
     .select(`
       id,

@@ -3,11 +3,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Layout } from "@/components/layout"
 import { FollowupForm } from "@/components/followup-form"
 import { FollowupList } from "@/components/followup-list"
+import { DevelopmentPlanContainer } from "@/components/development-plan-container"
 import { Toaster } from "@/components/ui/toaster"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { ResetButton } from "@/components/reset-button"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 function ErrorDisplay({ error }: { error: Error }) {
   const isServerDown = error.message.includes('521') || error.message.includes('server is down') || error.message.includes('paused')
@@ -59,28 +60,7 @@ function LoadingDisplay() {
 }
 
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_KEY
-
-  if (!supabaseUrl) {
-    throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL. Configúrala en las variables de entorno de Vercel.")
-  }
-
-  if (!supabaseKey) {
-    throw new Error("Falta SUPABASE_KEY. Configúrala en las variables de entorno de Vercel.")
-  }
-
-  if (!supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('supabase.in')) {
-    throw new Error(`La URL de Supabase parece incorrecta: ${supabaseUrl}. Debe ser algo como https://tu-proyecto.supabase.co`)
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  })
+  return getSupabaseServer()
 }
 
 async function getLeaders() {
@@ -163,9 +143,10 @@ export default async function Page() {
         </div>
 
         <Tabs defaultValue="new" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="new">Nuevo Seguimiento</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
+            <TabsTrigger value="development">Plan de Desarrollo</TabsTrigger>
           </TabsList>
           <TabsContent value="new">
             <Suspense fallback={<LoadingDisplay />}>
@@ -175,6 +156,11 @@ export default async function Page() {
           <TabsContent value="history">
             <Suspense fallback={<LoadingDisplay />}>
               <FollowupList leaders={leaders} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="development">
+            <Suspense fallback={<LoadingDisplay />}>
+              <DevelopmentPlanContainer leaders={leaders} topics={topics} />
             </Suspense>
           </TabsContent>
         </Tabs>

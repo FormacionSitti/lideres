@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseServer } from "@/lib/supabase-server"
 
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Faltan variables de entorno de Supabase")
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  })
+  return getSupabaseServer()
 }
 
 export async function GET(request: Request) {
@@ -139,6 +126,7 @@ export async function POST(request: Request) {
 
     if (action === "getFollowups") {
       const { leader_id } = data
+      const parsedLeaderId = Number(leader_id)
 
       const { data: followups, error } = await supabase
         .from("followups")
@@ -163,7 +151,7 @@ export async function POST(request: Request) {
             rating
           )
         `)
-        .eq("leader_id", leader_id)
+        .eq("leader_id", parsedLeaderId)
         .order("followup_date", { ascending: false })
 
       if (error) throw error
