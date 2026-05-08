@@ -20,16 +20,77 @@ import {
 } from "lucide-react"
 
 const DIMENSIONS = [
-  { key: "liderazgo_cercano", label: "Liderazgo cercano" },
-  { key: "resolucion_problemas", label: "Resolución táctico-estratégica de problemas" },
-  { key: "vision_transformadora", label: "Visión transformadora" },
-  { key: "toma_decisiones", label: "Toma de decisiones ágil y efectiva" },
-  { key: "cultura_aprendizaje", label: "Cultura de aprendizaje" },
-  { key: "comunicacion", label: "Comunicación" },
-  { key: "motivacion_innovacion", label: "Motivación e innovación" },
+  {
+    key: "liderazgo_cercano",
+    label: "Liderazgo cercano",
+    aliases: ["liderazgo cercano", "liderazgo"],
+  },
+  {
+    key: "resolucion_problemas",
+    label: "Resolución táctico-estratégica de problemas",
+    aliases: [
+      "resolucion tactico-estrategica de problemas",
+      "resolucion tactico estrategica de problemas",
+      "resolucion de problemas",
+      "resolucion problemas",
+    ],
+  },
+  {
+    key: "vision_transformadora",
+    label: "Visión transformadora",
+    aliases: ["vision transformadora", "vision"],
+  },
+  {
+    key: "toma_decisiones",
+    label: "Toma de decisiones ágil y efectiva",
+    aliases: [
+      "toma de decisiones agil y efectiva",
+      "toma de decisiones",
+      "decisiones",
+    ],
+  },
+  {
+    key: "cultura_aprendizaje",
+    label: "Cultura de aprendizaje",
+    aliases: ["cultura de aprendizaje", "aprendizaje"],
+  },
+  {
+    key: "comunicacion",
+    label: "Comunicación",
+    aliases: ["comunicacion"],
+  },
+  {
+    key: "motivacion_innovacion",
+    label: "Motivación e innovación",
+    aliases: ["motivacion e innovacion", "motivacion innovacion", "innovacion"],
+  },
 ] as const
 
 type DimensionKey = (typeof DIMENSIONS)[number]["key"]
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function matchDimensionKey(label: string): DimensionKey | null {
+  const n = normalize(label)
+  for (const d of DIMENSIONS) {
+    if (normalize(d.label) === n) return d.key
+    if (d.aliases.some((a) => a === n)) return d.key
+  }
+  // Match parcial (contiene): util si el tema tiene un nombre ampliado
+  for (const d of DIMENSIONS) {
+    const labelN = normalize(d.label)
+    if (n.includes(labelN) || labelN.includes(n)) return d.key
+    if (d.aliases.some((a) => n.includes(a) || a.includes(n))) return d.key
+  }
+  return null
+}
 
 const DIMENSION_LABELS = DIMENSIONS.map((d) => d.label)
 
@@ -254,16 +315,6 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
 
     setFinalizing(true)
     try {
-      const dimMap: Record<string, DimensionKey> = {
-        "Liderazgo cercano": "liderazgo_cercano",
-        "Resolución táctico-estratégica de problemas": "resolucion_problemas",
-        "Visión transformadora": "vision_transformadora",
-        "Toma de decisiones ágil y efectiva": "toma_decisiones",
-        "Cultura de aprendizaje": "cultura_aprendizaje",
-        "Comunicación": "comunicacion",
-        "Motivación e innovación": "motivacion_innovacion",
-      }
-
       const payload: Record<string, number | string | null> = {
         leader_id: leaderId,
         assessment_type: "final",
@@ -272,12 +323,35 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
         payload[d.key] = null
       })
 
+      const unmatched: string[] = []
+      const matched: Record<string, number> = {}
+
       averageData.forEach((item) => {
-        const key = dimMap[item.label]
+        const key = matchDimensionKey(item.label)
         if (key) {
           payload[key] = Number(item.value.toFixed(2))
+          matched[key] = Number(item.value.toFixed(2))
+        } else {
+          unmatched.push(item.label)
         }
       })
+
+      console.log("[v0] Radar Final - dimensiones mapeadas:", matched)
+      if (unmatched.length > 0) {
+        console.warn("[v0] Radar Final - temas sin mapear:", unmatched)
+      }
+
+      const matchedCount = Object.keys(matched).length
+      if (matchedCount === 0) {
+        toast({
+          title: "No se pudieron mapear los temas",
+          description:
+            "Los nombres de los temas en seguimientos no coinciden con las 7 dimensiones esperadas. Revisa la tabla 'topics' en Supabase.",
+          variant: "destructive",
+        })
+        setFinalizing(false)
+        return
+      }
 
       const res = await fetch("/api/supabase", {
         method: "POST",
@@ -288,9 +362,13 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
         const err = await res.json()
         throw new Error(err.error || "Error al finalizar")
       }
+      const okMsg =
+        unmatched.length > 0
+          ? `Radar Final generado con ${matchedCount}/7 dimensiones. ${unmatched.length} tema(s) no se pudieron mapear.`
+          : `Radar Final generado con las ${matchedCount} dimensiones evaluadas.`
       toast({
         title: "Proceso finalizado",
-        description: "Se ha generado el Radar Final con los promedios actuales.",
+        description: okMsg,
       })
       await fetchAssessments()
     } catch (error: any) {
@@ -659,6 +737,54 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               )}
               Guardar autoevaluación
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Detalle del Radar Final */}
+      {isFinalized && finalAssessment && (
+        <Card className="p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-green-100 text-green-700 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">Detalle del Radar Final</h4>
+              <p className="text-xs text-gray-500">
+                Promedio general: <strong>{finalAvg !== null ? finalAvg.toFixed(2) : "-"}/5</strong>
+                {" · "}
+                Generado el{" "}
+                {new Date(finalAssessment.updated_at || finalAssessment.created_at).toLocaleString(
+                  "es-CO",
+                  { dateStyle: "medium", timeStyle: "short" },
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {DIMENSIONS.map((d) => {
+              const v = finalAssessment[d.key]
+              const value = v !== null && v !== undefined ? Number(v) : null
+              const colorClass =
+                value === null
+                  ? "border-gray-200 bg-gray-50"
+                  : value >= 4
+                    ? "border-green-200 bg-green-50"
+                    : value >= 3
+                      ? "border-blue-200 bg-blue-50"
+                      : "border-amber-200 bg-amber-50"
+              return (
+                <div
+                  key={d.key}
+                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${colorClass}`}
+                >
+                  <span className="text-sm font-medium text-gray-700">{d.label}</span>
+                  <span className="text-base font-bold text-gray-900 whitespace-nowrap">
+                    {value !== null ? `${value.toFixed(2)}/5` : "Sin dato"}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </Card>
       )}
