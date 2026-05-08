@@ -105,6 +105,7 @@ function avgOfRow(row: AssessmentRow | null): number | null {
 export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaselineProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
+  const [tableMissing, setTableMissing] = useState(false)
   const [initialAssessment, setInitialAssessment] = useState<AssessmentRow | null>(null)
   const [finalAssessment, setFinalAssessment] = useState<AssessmentRow | null>(null)
   const [showInitialForm, setShowInitialForm] = useState(false)
@@ -125,10 +126,22 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
           data: { leader_id: leaderId },
         }),
       })
-      if (!res.ok) throw new Error("No se pudieron cargar las autoevaluaciones")
-      const { data } = await res.json()
-      const initial = data?.find((a: AssessmentRow) => a.assessment_type === "initial") || null
-      const final = data?.find((a: AssessmentRow) => a.assessment_type === "final") || null
+      const json = await res.json().catch(() => ({}))
+      if (json?.tableMissing) {
+        setTableMissing(true)
+        setInitialAssessment(null)
+        setFinalAssessment(null)
+        setForm(emptyForm())
+        setNotes("")
+        return
+      }
+      if (!res.ok) {
+        throw new Error(json?.error || "No se pudieron cargar las autoevaluaciones")
+      }
+      setTableMissing(false)
+      const list = json?.data || []
+      const initial = list.find((a: AssessmentRow) => a.assessment_type === "initial") || null
+      const final = list.find((a: AssessmentRow) => a.assessment_type === "final") || null
       setInitialAssessment(initial)
       setFinalAssessment(final)
       setForm(rowToForm(initial))
@@ -392,6 +405,30 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
       <Card className="p-8 flex items-center justify-center">
         <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
         <span className="ml-2 text-sm text-gray-600">Cargando autoevaluación...</span>
+      </Card>
+    )
+  }
+
+  if (tableMissing) {
+    return (
+      <Card className="p-6 border-amber-200 bg-amber-50">
+        <div className="flex items-start gap-3">
+          <Flag className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-amber-900">
+              Falta crear la tabla de autoevaluaciones
+            </h3>
+            <p className="text-sm text-amber-800">
+              Para activar el Radar Inicial y el Radar Final, ejecuta el siguiente script SQL en tu base de datos Supabase (una sola vez):
+            </p>
+            <code className="block text-xs bg-white border border-amber-200 rounded px-3 py-2 text-amber-900 font-mono">
+              scripts/create-leader-assessments-table.sql
+            </code>
+            <p className="text-xs text-amber-700">
+              Abre el panel de Supabase → SQL Editor → pega el contenido del archivo → Run. Luego recarga esta página.
+            </p>
+          </div>
+        </div>
       </Card>
     )
   }

@@ -250,7 +250,12 @@ export async function POST(request: Request) {
         .select("*")
         .eq("leader_id", parsedLeaderId)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json({ data: [], tableMissing: true })
+        }
+        throw error
+      }
 
       return NextResponse.json({ data: assessments })
     }
@@ -288,7 +293,19 @@ export async function POST(request: Request) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json(
+            {
+              error:
+                "La tabla 'leader_assessments' no existe en Supabase. Ejecuta el script scripts/create-leader-assessments-table.sql para crearla.",
+              tableMissing: true,
+            },
+            { status: 400 },
+          )
+        }
+        throw error
+      }
 
       return NextResponse.json({ data: assessment })
     }
@@ -302,7 +319,12 @@ export async function POST(request: Request) {
         .eq("leader_id", Number(leader_id))
         .eq("assessment_type", assessment_type)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json({ success: true, tableMissing: true })
+        }
+        throw error
+      }
 
       return NextResponse.json({ success: true })
     }
