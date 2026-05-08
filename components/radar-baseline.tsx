@@ -146,12 +146,22 @@ function rowToForm(row: AssessmentRow | null): FormState {
   return form
 }
 
-function rowToRadarData(row: AssessmentRow | null) {
-  if (!row) return []
-  return DIMENSIONS.map((d) => ({
-    dimension: d.label,
-    value: row[d.key] !== null && row[d.key] !== undefined ? Number(row[d.key]) : 0,
-  }))
+function rowToRadarData(
+  row: AssessmentRow | null,
+  fallback: AssessmentRow | null = null,
+) {
+  if (!row && !fallback) return []
+  return DIMENSIONS.map((d) => {
+    const primary = row?.[d.key]
+    const secondary = fallback?.[d.key]
+    let value = 0
+    if (primary !== null && primary !== undefined) value = Number(primary)
+    else if (secondary !== null && secondary !== undefined) value = Number(secondary)
+    return {
+      dimension: d.label,
+      value,
+    }
+  })
 }
 
 function avgOfRow(row: AssessmentRow | null): number | null {
@@ -435,7 +445,9 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
     if (finalAssessment) {
       result.push({
         label: "Radar Final",
-        data: rowToRadarData(finalAssessment),
+        // Si una dimension no fue medida en seguimientos, usar el valor del
+        // Radar Inicial como fallback visual para mantener el poligono coherente.
+        data: rowToRadarData(finalAssessment, initialAssessment),
         color: COLOR_FINAL,
       })
     } else if (averageData.length > 0) {
@@ -573,6 +585,27 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
                 />
               )}
             </div>
+
+            {/* Aviso cuando hay dimensiones heredadas del inicial en el Radar Final */}
+            {isFinalized && finalAssessment && initialAssessment && (() => {
+              const inheritedCount = DIMENSIONS.filter((d) => {
+                const f = finalAssessment[d.key]
+                const i = initialAssessment[d.key]
+                return (
+                  (f === null || f === undefined) &&
+                  i !== null &&
+                  i !== undefined
+                )
+              }).length
+              if (inheritedCount === 0) return null
+              return (
+                <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-md text-center">
+                  En {inheritedCount} {inheritedCount === 1 ? "dimensión" : "dimensiones"} no hubo
+                  seguimientos calificados; el Radar Final muestra el valor del Radar Inicial para
+                  esas dimensiones.
+                </p>
+              )
+            })()}
           </div>
         ) : (
           <div className="flex items-center justify-center h-60 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
@@ -751,8 +784,11 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
             <div>
               <h4 className="font-semibold text-gray-900">Detalle del Radar Final</h4>
               <p className="text-xs text-gray-500">
-                Promedio general: <strong>{finalAvg !== null ? finalAvg.toFixed(2) : "-"}/5</strong>
+                Promedio del cierre: <strong>{finalAvg !== null ? finalAvg.toFixed(2) : "-"}/5</strong>
                 {" · "}
+                Solo se promedian las dimensiones medidas en seguimientos.
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
                 Generado el{" "}
                 {new Date(finalAssessment.updated_at || finalAssessment.created_at).toLocaleString(
                   "es-CO",
@@ -765,22 +801,44 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
             {DIMENSIONS.map((d) => {
               const v = finalAssessment[d.key]
               const value = v !== null && v !== undefined ? Number(v) : null
+              const initialV = initialAssessment?.[d.key]
+              const initialValue =
+                initialV !== null && initialV !== undefined ? Number(initialV) : null
+              const measured = value !== null
+              const inheritedValue = !measured && initialValue !== null ? initialValue : null
+
+              const displayValue = measured ? value : inheritedValue
               const colorClass =
-                value === null
+                displayValue === null
                   ? "border-gray-200 bg-gray-50"
-                  : value >= 4
-                    ? "border-green-200 bg-green-50"
-                    : value >= 3
-                      ? "border-blue-200 bg-blue-50"
-                      : "border-amber-200 bg-amber-50"
+                  : !measured
+                    ? "border-amber-200 bg-amber-50/70"
+                    : displayValue >= 4
+                      ? "border-green-200 bg-green-50"
+                      : displayValue >= 3
+                        ? "border-blue-200 bg-blue-50"
+                        : "border-orange-200 bg-orange-50"
+
               return (
                 <div
                   key={d.key}
                   className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${colorClass}`}
                 >
-                  <span className="text-sm font-medium text-gray-700">{d.label}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-700">{d.label}</span>
+                    {!measured && inheritedValue !== null && (
+                      <span className="text-[10px] text-amber-700 font-medium mt-0.5">
+                        Sin seguimientos · valor heredado del Radar Inicial
+                      </span>
+                    )}
+                    {!measured && inheritedValue === null && (
+                      <span className="text-[10px] text-gray-500 mt-0.5">
+                        No se midió en seguimientos ni en autoevaluación inicial
+                      </span>
+                    )}
+                  </div>
                   <span className="text-base font-bold text-gray-900 whitespace-nowrap">
-                    {value !== null ? `${value.toFixed(2)}/5` : "Sin dato"}
+                    {displayValue !== null ? `${displayValue.toFixed(2)}/5` : "Sin dato"}
                   </span>
                 </div>
               )
