@@ -1130,8 +1130,32 @@ export function FollowupList({ leaders }: FollowupListProps) {
             ))}
 
             {!loading && followups.length === 0 && selectedLeader && (
-              <div className="text-center py-4 text-muted-foreground">
-                No hay seguimientos registrados para este líder.
+              <div className="space-y-4">
+                <Card className="p-6 border-blue-200 bg-blue-50">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+                      <PieChart className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-blue-900">
+                        Este líder aún no tiene seguimientos
+                      </h4>
+                      <p className="text-sm text-blue-800 mt-1">
+                        Puedes registrar primero la autoevaluación inicial del líder para generar
+                        el Radar Inicial de referencia. Más adelante, al realizar seguimientos y
+                        finalizar el proceso, podrás compararlo contra el Radar Final.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <RadarBaseline
+                  leaderId={Number(selectedLeader)}
+                  leaderName={
+                    uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""
+                  }
+                  averageData={radarData}
+                />
               </div>
             )}
           </div>
