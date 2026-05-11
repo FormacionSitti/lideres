@@ -1,0 +1,942 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { RadarChart } from "@/components/radar-chart"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Loader2,
+  Save,
+  CheckCircle2,
+  Edit3,
+  PlayCircle,
+  Flag,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react"
+
+const DIMENSIONS = [
+  {
+    key: "liderazgo_cercano",
+    label: "Liderazgo cercano",
+    aliases: ["liderazgo cercano", "liderazgo"],
+  },
+  {
+    key: "resolucion_problemas",
+    label: "Resolución táctico-estratégica de problemas",
+    aliases: [
+      "resolucion tactico-estrategica de problemas",
+      "resolucion tactico estrategica de problemas",
+      "resolucion de problemas",
+      "resolucion problemas",
+    ],
+  },
+  {
+    key: "vision_transformadora",
+    label: "Visión transformadora",
+    aliases: ["vision transformadora", "vision"],
+  },
+  {
+    key: "toma_decisiones",
+    label: "Toma de decisiones ágil y efectiva",
+    aliases: [
+      "toma de decisiones agil y efectiva",
+      "toma de decisiones",
+      "decisiones",
+    ],
+  },
+  {
+    key: "cultura_aprendizaje",
+    label: "Cultura de aprendizaje",
+    aliases: ["cultura de aprendizaje", "aprendizaje"],
+  },
+  {
+    key: "comunicacion",
+    label: "Comunicación",
+    aliases: ["comunicacion"],
+  },
+  {
+    key: "motivacion_innovacion",
+    label: "Motivación e innovación",
+    aliases: ["motivacion e innovacion", "motivacion innovacion", "innovacion"],
+  },
+] as const
+
+type DimensionKey = (typeof DIMENSIONS)[number]["key"]
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function matchDimensionKey(label: string): DimensionKey | null {
+  const n = normalize(label)
+  for (const d of DIMENSIONS) {
+    if (normalize(d.label) === n) return d.key
+    if (d.aliases.some((a) => a === n)) return d.key
+  }
+  // Match parcial (contiene): util si el tema tiene un nombre ampliado
+  for (const d of DIMENSIONS) {
+    const labelN = normalize(d.label)
+    if (n.includes(labelN) || labelN.includes(n)) return d.key
+    if (d.aliases.some((a) => n.includes(a) || a.includes(n))) return d.key
+  }
+  return null
+}
+
+const DIMENSION_LABELS = DIMENSIONS.map((d) => d.label)
+
+const COLOR_INITIAL = "#f59e0b" // amber - punto de partida (autoevaluacion)
+const COLOR_AVG = "#2563eb" // azul - promedio actual de seguimientos
+const COLOR_FINAL = "#16a34a" // verde - radar final (cierre)
+
+interface AssessmentRow {
+  id: string
+  leader_id: number
+  assessment_type: "initial" | "final"
+  liderazgo_cercano: number | null
+  resolucion_problemas: number | null
+  vision_transformadora: number | null
+  toma_decisiones: number | null
+  cultura_aprendizaje: number | null
+  comunicacion: number | null
+  motivacion_innovacion: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface RadarBaselineProps {
+  leaderId: number
+  leaderName: string
+  averageData: { label: string; value: number }[]
+}
+
+type FormState = Record<DimensionKey, string>
+
+function emptyForm(): FormState {
+  return {
+    liderazgo_cercano: "",
+    resolucion_problemas: "",
+    vision_transformadora: "",
+    toma_decisiones: "",
+    cultura_aprendizaje: "",
+    comunicacion: "",
+    motivacion_innovacion: "",
+  }
+}
+
+function rowToForm(row: AssessmentRow | null): FormState {
+  const form = emptyForm()
+  if (!row) return form
+  DIMENSIONS.forEach((d) => {
+    const v = row[d.key]
+    if (v !== null && v !== undefined) {
+      form[d.key] = String(v)
+    }
+  })
+  return form
+}
+
+function rowToRadarData(
+  row: AssessmentRow | null,
+  fallback: AssessmentRow | null = null,
+) {
+  if (!row && !fallback) return []
+  return DIMENSIONS.map((d) => {
+    const primary = row?.[d.key]
+    const secondary = fallback?.[d.key]
+    let value = 0
+    if (primary !== null && primary !== undefined) value = Number(primary)
+    else if (secondary !== null && secondary !== undefined) value = Number(secondary)
+    return {
+      dimension: d.label,
+      value,
+    }
+  })
+}
+
+function avgOfRow(row: AssessmentRow | null): number | null {
+  if (!row) return null
+  const values = DIMENSIONS.map((d) => row[d.key]).filter(
+    (v): v is number => v !== null && v !== undefined,
+  )
+  if (values.length === 0) return null
+  return values.reduce((a, b) => a + b, 0) / values.length
+}
+
+export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaselineProps) {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [tableMissing, setTableMissing] = useState(false)
+  const [initialAssessment, setInitialAssessment] = useState<AssessmentRow | null>(null)
+  const [finalAssessment, setFinalAssessment] = useState<AssessmentRow | null>(null)
+  const [showInitialForm, setShowInitialForm] = useState(false)
+  const [savingInitial, setSavingInitial] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
+  const [reopening, setReopening] = useState(false)
+  const [form, setForm] = useState<FormState>(emptyForm())
+  const [notes, setNotes] = useState("")
+
+  const fetchAssessments = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "getLeaderAssessments",
+          data: { leader_id: leaderId },
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (json?.tableMissing) {
+        setTableMissing(true)
+        setInitialAssessment(null)
+        setFinalAssessment(null)
+        setForm(emptyForm())
+        setNotes("")
+        return
+      }
+      if (!res.ok) {
+        throw new Error(json?.error || "No se pudieron cargar las autoevaluaciones")
+      }
+      setTableMissing(false)
+      const list = json?.data || []
+      const initial = list.find((a: AssessmentRow) => a.assessment_type === "initial") || null
+      const final = list.find((a: AssessmentRow) => a.assessment_type === "final") || null
+      setInitialAssessment(initial)
+      setFinalAssessment(final)
+      setForm(rowToForm(initial))
+      setNotes(initial?.notes || "")
+    } catch (error: any) {
+      console.error("[v0] Error obteniendo autoevaluaciones:", error)
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron cargar las autoevaluaciones.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAssessments()
+    setShowInitialForm(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderId])
+
+  const validateValue = (raw: string): number | null => {
+    if (raw.trim() === "") return null
+    const n = Number(raw.replace(",", "."))
+    if (Number.isNaN(n)) return null
+    if (n < 1 || n > 5) return null
+    return n
+  }
+
+  const handleSaveInitial = async () => {
+    // Validar que todos los campos esten en rango 1-5 (permitir vacios para edicion parcial)
+    const payload: Record<string, number | null | string | undefined> = {
+      leader_id: leaderId,
+      assessment_type: "initial",
+      notes: notes || null,
+    }
+    let hasAtLeastOne = false
+    for (const d of DIMENSIONS) {
+      const raw = form[d.key]
+      if (raw.trim() === "") {
+        payload[d.key] = null
+        continue
+      }
+      const n = validateValue(raw)
+      if (n === null) {
+        toast({
+          title: "Valor inválido",
+          description: `${d.label} debe ser un número entre 1 y 5.`,
+          variant: "destructive",
+        })
+        return
+      }
+      payload[d.key] = n
+      hasAtLeastOne = true
+    }
+
+    if (!hasAtLeastOne) {
+      toast({
+        title: "Faltan datos",
+        description: "Ingresa al menos una calificación de la autoevaluación.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSavingInitial(true)
+    try {
+      const res = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "saveLeaderAssessment", data: payload }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Error al guardar la autoevaluación")
+      }
+      toast({
+        title: "Autoevaluación guardada",
+        description: "El Radar Inicial se ha actualizado.",
+      })
+      setShowInitialForm(false)
+      await fetchAssessments()
+    } catch (error: any) {
+      console.error("[v0] Error guardando autoevaluacion:", error)
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setSavingInitial(false)
+    }
+  }
+
+  const handleFinalize = async () => {
+    if (averageData.length === 0) {
+      toast({
+        title: "Sin seguimientos",
+        description: "Necesitas al menos un seguimiento con calificaciones para finalizar.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const confirmed = window.confirm(
+      "¿Estás seguro de finalizar el proceso de seguimientos? Esto creará el Radar Final con los promedios actuales.",
+    )
+    if (!confirmed) return
+
+    setFinalizing(true)
+    try {
+      const payload: Record<string, number | string | null> = {
+        leader_id: leaderId,
+        assessment_type: "final",
+      }
+      DIMENSIONS.forEach((d) => {
+        payload[d.key] = null
+      })
+
+      const unmatched: string[] = []
+      const matched: Record<string, number> = {}
+
+      averageData.forEach((item) => {
+        const key = matchDimensionKey(item.label)
+        if (key) {
+          payload[key] = Number(item.value.toFixed(2))
+          matched[key] = Number(item.value.toFixed(2))
+        } else {
+          unmatched.push(item.label)
+        }
+      })
+
+      console.log("[v0] Radar Final - dimensiones mapeadas:", matched)
+      if (unmatched.length > 0) {
+        console.warn("[v0] Radar Final - temas sin mapear:", unmatched)
+      }
+
+      const matchedCount = Object.keys(matched).length
+      if (matchedCount === 0) {
+        toast({
+          title: "No se pudieron mapear los temas",
+          description:
+            "Los nombres de los temas en seguimientos no coinciden con las 7 dimensiones esperadas. Revisa la tabla 'topics' en Supabase.",
+          variant: "destructive",
+        })
+        setFinalizing(false)
+        return
+      }
+
+      const res = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "saveLeaderAssessment", data: payload }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Error al finalizar")
+      }
+      const okMsg =
+        unmatched.length > 0
+          ? `Radar Final generado con ${matchedCount}/7 dimensiones. ${unmatched.length} tema(s) no se pudieron mapear.`
+          : `Radar Final generado con las ${matchedCount} dimensiones evaluadas.`
+      toast({
+        title: "Proceso finalizado",
+        description: okMsg,
+      })
+      await fetchAssessments()
+    } catch (error: any) {
+      console.error("[v0] Error finalizando:", error)
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setFinalizing(false)
+    }
+  }
+
+  const handleReopen = async () => {
+    const confirmed = window.confirm(
+      "¿Reabrir el proceso? Esto eliminará el Radar Final actual. La autoevaluación inicial se conservará.",
+    )
+    if (!confirmed) return
+
+    setReopening(true)
+    try {
+      const res = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteLeaderAssessment",
+          data: { leader_id: leaderId, assessment_type: "final" },
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Error al reabrir")
+      }
+      toast({
+        title: "Proceso reabierto",
+        description: "Puedes seguir registrando seguimientos.",
+      })
+      await fetchAssessments()
+    } catch (error: any) {
+      console.error("[v0] Error reabriendo:", error)
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setReopening(false)
+    }
+  }
+
+  // Datos para el RadarChart combinado
+  const datasets = useMemo(() => {
+    const result: { label: string; data: { dimension: string; value: number }[]; color: string }[] = []
+
+    if (initialAssessment) {
+      result.push({
+        label: "Radar Inicial",
+        data: rowToRadarData(initialAssessment),
+        color: COLOR_INITIAL,
+      })
+    }
+
+    if (finalAssessment) {
+      result.push({
+        label: "Radar Final",
+        // Si una dimension no fue medida en seguimientos, usar el valor del
+        // Radar Inicial como fallback visual para mantener el poligono coherente.
+        data: rowToRadarData(finalAssessment, initialAssessment),
+        color: COLOR_FINAL,
+      })
+    } else if (averageData.length > 0) {
+      // Mientras el proceso este en curso, mostrar el promedio dinamico
+      result.push({
+        label: "Radar Promedio",
+        data: averageData.map((d) => ({ dimension: d.label, value: d.value })),
+        color: COLOR_AVG,
+      })
+    }
+
+    return result
+  }, [initialAssessment, finalAssessment, averageData])
+
+  const initialAvg = avgOfRow(initialAssessment)
+  const finalAvg = avgOfRow(finalAssessment)
+  const currentAvg =
+    averageData.length > 0
+      ? averageData.reduce((s, d) => s + d.value, 0) / averageData.length
+      : null
+
+  const isFinalized = !!finalAssessment
+
+  // Mostrar evolucion inicial vs final
+  const evolutionRows = useMemo(() => {
+    if (!initialAssessment || !finalAssessment) return []
+    return DIMENSIONS.map((d) => {
+      const initial = initialAssessment[d.key]
+      const final = finalAssessment[d.key]
+      const change =
+        initial !== null && initial !== undefined && final !== null && final !== undefined
+          ? Number(final) - Number(initial)
+          : null
+      return {
+        label: d.label,
+        initial,
+        final,
+        change,
+      }
+    })
+  }, [initialAssessment, finalAssessment])
+
+  if (loading) {
+    return (
+      <Card className="p-8 flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+        <span className="ml-2 text-sm text-gray-600">Cargando autoevaluación...</span>
+      </Card>
+    )
+  }
+
+  if (tableMissing) {
+    return (
+      <Card className="p-6 border-amber-200 bg-amber-50">
+        <div className="flex items-start gap-3">
+          <Flag className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-amber-900">
+              Falta crear la tabla de autoevaluaciones
+            </h3>
+            <p className="text-sm text-amber-800">
+              Para activar el Radar Inicial y el Radar Final, ejecuta el siguiente script SQL en tu base de datos Supabase (una sola vez):
+            </p>
+            <code className="block text-xs bg-white border border-amber-200 rounded px-3 py-2 text-amber-900 font-mono">
+              scripts/create-leader-assessments-table.sql
+            </code>
+            <p className="text-xs text-amber-700">
+              Abre el panel de Supabase → SQL Editor → pega el contenido del archivo → Run. Luego recarga esta página.
+            </p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Card principal con el radar */}
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Radar de Competencias: {leaderName}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {isFinalized
+                ? "Proceso finalizado: comparación entre la autoevaluación inicial y el resultado final"
+                : initialAssessment
+                  ? "Autoevaluación inicial vs. promedio actual de seguimientos"
+                  : "Promedio actual de seguimientos. Ingresa la autoevaluación inicial para comparar."}
+            </p>
+          </div>
+          {isFinalized && (
+            <span className="inline-flex items-center gap-1.5 self-start px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Finalizado
+            </span>
+          )}
+        </div>
+
+        {datasets.length > 0 ? (
+          <div className="flex flex-col items-center">
+            <RadarChart
+              datasets={datasets}
+              dimensions={DIMENSION_LABELS}
+              maxValue={5}
+              size={420}
+              showLegend={false}
+            />
+            {/* Leyenda personalizada */}
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {initialAssessment && (
+                <LegendBadge
+                  color={COLOR_INITIAL}
+                  label="Radar Inicial"
+                  detail={
+                    initialAvg !== null
+                      ? `Autoevaluación · Prom: ${initialAvg.toFixed(1)}`
+                      : "Autoevaluación"
+                  }
+                />
+              )}
+              {!isFinalized && currentAvg !== null && (
+                <LegendBadge
+                  color={COLOR_AVG}
+                  label="Radar Promedio"
+                  detail={`En curso · Prom: ${currentAvg.toFixed(1)}`}
+                />
+              )}
+              {finalAssessment && (
+                <LegendBadge
+                  color={COLOR_FINAL}
+                  label="Radar Final"
+                  detail={finalAvg !== null ? `Cierre · Prom: ${finalAvg.toFixed(1)}` : "Cierre"}
+                />
+              )}
+            </div>
+
+            {/* Aviso cuando hay dimensiones heredadas del inicial en el Radar Final */}
+            {isFinalized && finalAssessment && initialAssessment && (() => {
+              const inheritedCount = DIMENSIONS.filter((d) => {
+                const f = finalAssessment[d.key]
+                const i = initialAssessment[d.key]
+                return (
+                  (f === null || f === undefined) &&
+                  i !== null &&
+                  i !== undefined
+                )
+              }).length
+              if (inheritedCount === 0) return null
+              return (
+                <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-md text-center">
+                  En {inheritedCount} {inheritedCount === 1 ? "dimensión" : "dimensiones"} no hubo
+                  seguimientos calificados; el Radar Final muestra el valor del Radar Inicial para
+                  esas dimensiones.
+                </p>
+              )
+            })()}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-60 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+            <p className="text-gray-500 text-sm text-center px-4">
+              Aún no hay datos para mostrar. Ingresa la autoevaluación inicial o registra seguimientos.
+            </p>
+          </div>
+        )}
+      </Card>
+
+      {/* Acciones */}
+      <Card className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4">
+          {/* Bloque autoevaluacion inicial */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <PlayCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Radar Inicial (Autoevaluación)</h4>
+                <p className="text-xs text-gray-500">
+                  {initialAssessment
+                    ? `Registrada · Promedio ${initialAvg?.toFixed(1) ?? "-"}/5`
+                    : "Aún no registrada por el líder."}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setForm(rowToForm(initialAssessment))
+                setNotes(initialAssessment?.notes || "")
+                setShowInitialForm((s) => !s)
+              }}
+            >
+              <Edit3 className="w-4 h-4 mr-2" />
+              {initialAssessment ? "Editar autoevaluación" : "Ingresar autoevaluación"}
+            </Button>
+          </div>
+
+          {/* Bloque finalizar */}
+          <div className="border-t pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isFinalized ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"
+                }`}
+              >
+                {isFinalized ? <CheckCircle2 className="w-5 h-5" /> : <Flag className="w-5 h-5" />}
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">
+                  {isFinalized ? "Radar Final generado" : "Finalizar seguimientos"}
+                </h4>
+                <p className="text-xs text-gray-500">
+                  {isFinalized
+                    ? `Snapshot del cierre · Promedio ${finalAvg?.toFixed(1) ?? "-"}/5`
+                    : currentAvg !== null
+                      ? `Generará el Radar Final con el promedio actual (${currentAvg.toFixed(1)}/5).`
+                      : "Registra al menos un seguimiento para poder finalizar."}
+                </p>
+              </div>
+            </div>
+            {isFinalized ? (
+              <Button variant="outline" size="sm" onClick={handleReopen} disabled={reopening}>
+                {reopening ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Reabrir proceso
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleFinalize}
+                disabled={finalizing || averageData.length === 0}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {finalizing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Flag className="w-4 h-4 mr-2" />
+                )}
+                Finalizar y generar Radar Final
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Formulario autoevaluacion inicial */}
+      {showInitialForm && (
+        <Card className="p-6 border-amber-200 bg-amber-50/40">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">
+                {initialAssessment ? "Editar Autoevaluación Inicial" : "Nueva Autoevaluación Inicial"}
+              </h4>
+              <p className="text-xs text-gray-500">
+                Ingresa la calificación del líder en cada competencia (escala 1 a 5). Puedes dejar
+                vacío lo que aún no se haya autoevaluado.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {DIMENSIONS.map((d) => (
+              <div key={d.key} className="space-y-1.5">
+                <Label htmlFor={`init-${d.key}`} className="text-sm">
+                  {d.label}
+                </Label>
+                <Input
+                  id={`init-${d.key}`}
+                  type="number"
+                  min={1}
+                  max={5}
+                  step={0.1}
+                  inputMode="decimal"
+                  placeholder="1.0 - 5.0"
+                  value={form[d.key]}
+                  onChange={(e) => setForm({ ...form, [d.key]: e.target.value })}
+                  className="bg-white"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-1.5 mb-4">
+            <Label htmlFor="init-notes" className="text-sm">
+              Notas (opcional)
+            </Label>
+            <Textarea
+              id="init-notes"
+              placeholder="Contexto de la autoevaluación, fecha, comentarios del líder..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="bg-white"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowInitialForm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveInitial}
+              disabled={savingInitial}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {savingInitial ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Guardar autoevaluación
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Detalle del Radar Final */}
+      {isFinalized && finalAssessment && (
+        <Card className="p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-green-100 text-green-700 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">Detalle del Radar Final</h4>
+              <p className="text-xs text-gray-500">
+                Promedio del cierre: <strong>{finalAvg !== null ? finalAvg.toFixed(2) : "-"}/5</strong>
+                {" · "}
+                Solo se promedian las dimensiones medidas en seguimientos.
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Generado el{" "}
+                {new Date(finalAssessment.updated_at || finalAssessment.created_at).toLocaleString(
+                  "es-CO",
+                  { dateStyle: "medium", timeStyle: "short" },
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {DIMENSIONS.map((d) => {
+              const v = finalAssessment[d.key]
+              const value = v !== null && v !== undefined ? Number(v) : null
+              const initialV = initialAssessment?.[d.key]
+              const initialValue =
+                initialV !== null && initialV !== undefined ? Number(initialV) : null
+              const measured = value !== null
+              const inheritedValue = !measured && initialValue !== null ? initialValue : null
+
+              const displayValue = measured ? value : inheritedValue
+              const colorClass =
+                displayValue === null
+                  ? "border-gray-200 bg-gray-50"
+                  : !measured
+                    ? "border-amber-200 bg-amber-50/70"
+                    : displayValue >= 4
+                      ? "border-green-200 bg-green-50"
+                      : displayValue >= 3
+                        ? "border-blue-200 bg-blue-50"
+                        : "border-orange-200 bg-orange-50"
+
+              return (
+                <div
+                  key={d.key}
+                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${colorClass}`}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-700">{d.label}</span>
+                    {!measured && inheritedValue !== null && (
+                      <span className="text-[10px] text-amber-700 font-medium mt-0.5">
+                        Sin seguimientos · valor heredado del Radar Inicial
+                      </span>
+                    )}
+                    {!measured && inheritedValue === null && (
+                      <span className="text-[10px] text-gray-500 mt-0.5">
+                        No se midió en seguimientos ni en autoevaluación inicial
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-base font-bold text-gray-900 whitespace-nowrap">
+                    {displayValue !== null ? `${displayValue.toFixed(2)}/5` : "Sin dato"}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Comparativo Inicial vs Final */}
+      {isFinalized && evolutionRows.length > 0 && (
+        <Card className="p-6 overflow-x-auto">
+          <h4 className="font-semibold text-gray-900 mb-4">Evolución: Inicial vs Final</h4>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left py-3 px-3 font-semibold">Competencia</th>
+                <th className="text-center py-3 px-3 font-semibold">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: COLOR_INITIAL }}
+                    />
+                    Inicial
+                  </span>
+                </th>
+                <th className="text-center py-3 px-3 font-semibold">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: COLOR_FINAL }}
+                    />
+                    Final
+                  </span>
+                </th>
+                <th className="text-center py-3 px-3 font-semibold">Cambio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evolutionRows.map((row) => {
+                const change = row.change
+                const formatted =
+                  row.initial !== null && row.final !== null && change !== null
+                    ? `${change > 0 ? "+" : ""}${change.toFixed(1)}`
+                    : "-"
+                const changeClass =
+                  change === null
+                    ? "bg-gray-100 text-gray-500"
+                    : change > 0
+                      ? "bg-green-100 text-green-700"
+                      : change < 0
+                        ? "bg-red-100 text-red-700"
+                        : "bg-gray-100 text-gray-500"
+                return (
+                  <tr key={row.label} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-3 px-3 text-gray-700 font-medium">{row.label}</td>
+                    <td className="text-center py-3 px-3 text-gray-700">
+                      {row.initial !== null ? Number(row.initial).toFixed(1) : "-"}
+                    </td>
+                    <td className="text-center py-3 px-3 text-gray-700">
+                      {row.final !== null ? Number(row.final).toFixed(1) : "-"}
+                    </td>
+                    <td className="text-center py-3 px-3">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${changeClass}`}
+                      >
+                        {formatted}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function LegendBadge({
+  color,
+  label,
+  detail,
+}: {
+  color: string
+  label: string
+  detail: string
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 px-4 py-2 rounded-full border-2 bg-white"
+      style={{ borderColor: color }}
+    >
+      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: color }} />
+      <span className="font-semibold text-sm" style={{ color }}>
+        {label}
+      </span>
+      <span className="text-xs text-gray-600">{detail}</span>
+    </div>
+  )
+}

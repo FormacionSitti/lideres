@@ -9,9 +9,10 @@ import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart
 import { useRouter } from "next/navigation"
 import type { Leader, Followup } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
-import { RadarChart, SimpleRadarChart } from "@/components/radar-chart"
+import { RadarChart } from "@/components/radar-chart"
 import { CoachingInterpretation } from "@/components/coaching-interpretation"
 import { RadarEvolution } from "@/components/radar-evolution"
+import { RadarBaseline } from "@/components/radar-baseline"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 
@@ -1045,38 +1046,21 @@ export function FollowupList({ leaders }: FollowupListProps) {
 
         {loading && <div className="text-center py-4 text-muted-foreground">Cargando seguimientos...</div>}
 
-        {/* Radar Táctico-Estratégico Individual */}
-        {!showComparison && showRadar && !showEvolution && radarData.length > 0 && selectedLeader && (
+        {/* Radar Táctico-Estratégico Individual + Inicial / Final */}
+        {!showComparison && showRadar && !showEvolution && selectedLeader && (
           <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-center mb-4">
-                Radar Táctico-Estratégico: {uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name}
-              </h3>
-              <p className="text-sm text-gray-500 text-center mb-6">
-                Promedio de calificaciones por dimensión (Escala 1-5)
-              </p>
-              <SimpleRadarChart data={radarData} size={380} color="#2563eb" />
-              
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {radarData.map((item, index) => (
-                  <div 
-                    key={index} 
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      item.value >= 4 ? "bg-green-100 text-green-700" :
-                      item.value >= 3 ? "bg-blue-100 text-blue-700" :
-                      "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {item.label}: {item.value.toFixed(1)}
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <CoachingInterpretation 
-              data={radarData} 
-              leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""} 
+            <RadarBaseline
+              leaderId={Number(selectedLeader)}
+              leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""}
+              averageData={radarData}
             />
+
+            {radarData.length > 0 && (
+              <CoachingInterpretation
+                data={radarData}
+                leaderName={uniqueLeaders.find((l) => l.id.toString() === selectedLeader)?.name || ""}
+              />
+            )}
           </div>
         )}
 

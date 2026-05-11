@@ -240,6 +240,95 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
+    // === Autoevaluacion inicial y radar final ===
+    if (action === "getLeaderAssessments") {
+      const { leader_id } = data
+      const parsedLeaderId = Number(leader_id)
+
+      const { data: assessments, error } = await supabase
+        .from("leader_assessments")
+        .select("*")
+        .eq("leader_id", parsedLeaderId)
+
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json({ data: [], tableMissing: true })
+        }
+        throw error
+      }
+
+      return NextResponse.json({ data: assessments })
+    }
+
+    if (action === "saveLeaderAssessment") {
+      const {
+        leader_id,
+        assessment_type,
+        liderazgo_cercano,
+        resolucion_problemas,
+        vision_transformadora,
+        toma_decisiones,
+        cultura_aprendizaje,
+        comunicacion,
+        motivacion_innovacion,
+        notes,
+      } = data
+
+      const payload = {
+        leader_id: Number(leader_id),
+        assessment_type,
+        liderazgo_cercano: liderazgo_cercano ?? null,
+        resolucion_problemas: resolucion_problemas ?? null,
+        vision_transformadora: vision_transformadora ?? null,
+        toma_decisiones: toma_decisiones ?? null,
+        cultura_aprendizaje: cultura_aprendizaje ?? null,
+        comunicacion: comunicacion ?? null,
+        motivacion_innovacion: motivacion_innovacion ?? null,
+        notes: notes ?? null,
+      }
+
+      const { data: assessment, error } = await supabase
+        .from("leader_assessments")
+        .upsert(payload, { onConflict: "leader_id,assessment_type" })
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json(
+            {
+              error:
+                "La tabla 'leader_assessments' no existe en Supabase. Ejecuta el script scripts/create-leader-assessments-table.sql para crearla.",
+              tableMissing: true,
+            },
+            { status: 400 },
+          )
+        }
+        throw error
+      }
+
+      return NextResponse.json({ data: assessment })
+    }
+
+    if (action === "deleteLeaderAssessment") {
+      const { leader_id, assessment_type } = data
+
+      const { error } = await supabase
+        .from("leader_assessments")
+        .delete()
+        .eq("leader_id", Number(leader_id))
+        .eq("assessment_type", assessment_type)
+
+      if (error) {
+        if (error.code === "42P01") {
+          return NextResponse.json({ success: true, tableMissing: true })
+        }
+        throw error
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
   } catch (error: any) {
     console.error("Error en API:", error)
