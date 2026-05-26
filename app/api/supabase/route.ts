@@ -90,24 +90,36 @@ export async function POST(request: Request) {
         next_followup_date,
         sequence_number,
         previous_followup_id,
+        ratings,
       } = data
 
-      const { data: followup, error: followupError } = await supabase
+      const baseInsert: Record<string, unknown> = {
+        leader_id: Number.parseInt(leader_id),
+        type,
+        observations,
+        agreements,
+        followup_date,
+        next_followup_date: next_followup_date || null,
+        sequence_number,
+        previous_followup_id,
+      }
+      if (ratings && typeof ratings === "object") {
+        baseInsert.ratings = ratings
+      }
+
+      let { data: followup, error: followupError } = await supabase
         .from("followups")
-        .insert([
-          {
-            leader_id: Number.parseInt(leader_id),
-            type,
-            observations,
-            agreements,
-            followup_date,
-            next_followup_date: next_followup_date || null,
-            sequence_number,
-            previous_followup_id,
-          },
-        ])
+        .insert([baseInsert])
         .select()
         .single()
+
+      // Si la columna ratings aun no existe en la tabla, reintentar sin ella
+      if (followupError && (followupError as any).code === "PGRST204") {
+        delete baseInsert.ratings
+        const retry = await supabase.from("followups").insert([baseInsert]).select().single()
+        followup = retry.data
+        followupError = retry.error
+      }
 
       if (followupError) throw followupError
 

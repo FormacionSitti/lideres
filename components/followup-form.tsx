@@ -171,6 +171,14 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
         }).toISOString()
       }
 
+      // Construir objeto JSON de ratings por topic seleccionado
+      const ratingsJson: Record<string, number> = {}
+      Object.entries(selectedTopics).forEach(([topicId, isSelected]) => {
+        if (isSelected) {
+          ratingsJson[topicId] = topicRatings[topicId] || 1
+        }
+      })
+
       // Insertar el seguimiento usando la API
       const followupResponse = await fetch("/api/supabase", {
         method: "POST",
@@ -188,6 +196,7 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
             next_followup_date: formattedNextFollowupDate,
             sequence_number: nextSequenceNumber,
             previous_followup_id: previousFollowupId,
+            ratings: ratingsJson,
           },
         }),
       })

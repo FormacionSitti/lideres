@@ -94,8 +94,8 @@ function matchDimensionKey(label: string): DimensionKey | null {
 
 const DIMENSION_LABELS = DIMENSIONS.map((d) => d.label)
 
-const COLOR_INITIAL = "#f59e0b" // amber - punto de partida (autoevaluacion)
-const COLOR_AVG = "#2563eb" // azul - promedio actual de seguimientos
+const COLOR_INITIAL = "#2563eb" // azul - punto de partida (autoevaluacion)
+const COLOR_AVG = "#f59e0b" // ambar - promedio actual de seguimientos (en curso)
 const COLOR_FINAL = "#16a34a" // verde - radar final (cierre)
 
 interface AssessmentRow {

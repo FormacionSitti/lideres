@@ -1,18 +1,18 @@
 "use client"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Star } from "lucide-react"
 import type { Topic } from "@/lib/types"
 
 // Descripciones de cada dimensión del Radar Táctico-Estratégico
 const topicDescriptions: Record<string, string> = {
   "Liderazgo cercano": "Mide la gestión del líder con el equipo: accesibilidad, claridad en prioridades, seguimiento y retroalimentación.",
-  "Resolución táctico-estratégica de problemas": "Mide la capacidad de resolver problemas estructurales: análisis de causas raíz, soluciones sostenibles y acción preventiva.",
-  "Visión transformadora": "Mide la capacidad de evolucionar y mejorar: proponer mejoras, cuestionar prácticas, impulsar innovación.",
-  "Toma de decisiones ágil y efectiva": "Mide la rapidez y criterio en decisiones: oportunidad, evitar retrasos, claridad y criterio.",
+  "Resolución táctico-estratégica de problemas": "Mide la capacidad de resolver problemas estructurales: diagnóstico de raíz, planificación y ejecución efectiva.",
+  "Visión transformadora": "Mide la capacidad de evolucionar y mejorar: pensamiento a futuro, gestión del cambio e innovación sostenida.",
+  "Toma de decisiones ágil y efectiva": "Mide la rapidez y criterio en decisiones: análisis rápido, priorización y responsabilidad sobre resultados.",
   "Cultura de aprendizaje": "Mide el aprendizaje a nivel de equipo: promover aprendizaje, compartir conocimientos, espacios de mejora.",
-  "Comunicación": "Mide la alineación estratégica del equipo: claridad en prioridades, decisiones a tiempo, retroalimentación.",
-  "Motivación e innovación": "Mide la capacidad de inspirar y transformar: ideas innovadoras, motivación, impulso al cambio.",
+  "Comunicación": "Mide la alineación estratégica del equipo: mensajes claros, escucha activa y feedback constructivo.",
+  "Motivación e innovación": "Mide la capacidad de inspirar y transformar: reconocimiento, propósito compartido y fomento de ideas nuevas.",
 }
 
 // Escala de calificación con descripciones
@@ -52,34 +52,26 @@ export function TopicRating({ topic, selected, rating, onSelectChange, onRatingC
         )}
         {selected && (
           <div className="mt-3">
-            <RadioGroup
-              value={rating.toString()}
-              onValueChange={(value) => onRatingChange(topic.id, Number.parseInt(value))}
-              className="flex flex-wrap gap-2"
-            >
+            <p className="text-xs text-gray-600 mb-2">Calificación: <span className="font-semibold">{rating}</span> - {ratingDescriptions[rating]}</p>
+            <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((value) => (
-                <div 
-                  key={value} 
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
-                    rating === value 
-                      ? "bg-blue-100 border-blue-400 text-blue-700" 
-                      : "bg-white border-gray-200 hover:border-blue-200"
-                  }`}
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onRatingChange(topic.id, value)}
+                  className="p-1 rounded hover:scale-110 transition-transform"
+                  aria-label={`Calificar ${value} estrellas`}
                 >
-                  <RadioGroupItem 
-                    value={value.toString()} 
-                    id={`rating-${topic.id}-${value}`} 
-                    className="sr-only"
+                  <Star
+                    className={`w-6 h-6 ${
+                      value <= rating
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-gray-300"
+                    }`}
                   />
-                  <Label 
-                    htmlFor={`rating-${topic.id}-${value}`} 
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    {value} - {ratingDescriptions[value]}
-                  </Label>
-                </div>
+                </button>
               ))}
-            </RadioGroup>
+            </div>
           </div>
         )}
       </div>

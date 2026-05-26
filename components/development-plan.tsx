@@ -7,7 +7,7 @@ import {
   Zap, Wrench, Sparkles, Compass, Target,
   ChevronDown, ChevronRight, AlertTriangle, TrendingUp,
   CheckSquare, XCircle, Clock, Cloud, CloudOff, RefreshCw,
-  Filter, Sparkle
+  Filter, Sparkle, BookOpen, CalendarDays
 } from "lucide-react"
 
 function normalizeText(text: string) {
@@ -135,6 +135,64 @@ const MODULES = [
       { id: "vis4", week: 8, text: "Establecer métricas de evolución y mejora continua", howTo: ["Definir 3-5 indicadores de transformación", "Línea base actual y meta a 6 y 12 meses", "Revisión mensual con el equipo"], deliverable: "Tablero de evolución del área" },
     ]
   }
+]
+
+// ─── ACTIVIDADES VINCULADAS A TALENTO SITTI ──────────────────────────────────
+
+const PLAN_ACTIVIDADES: Record<string, { titulo: string; desc: string; tipo: string; cursoSitti: string }[]> = {
+  "Comunicacion": [
+    { titulo: "Mensaje de equipo semanal", desc: "Enviar resumen semanal al equipo con logros, prioridades y reconocimientos.", tipo: "Hábito", cursoSitti: "Comunicación efectiva con equipos" },
+    { titulo: "Escucha activa estructurada", desc: "En 1:1, parafrasear antes de responder y documentar acuerdos.", tipo: "Habilidad", cursoSitti: "Comunicación asertiva" },
+    { titulo: "Presentación mensual de resultados", desc: "Preparar y presentar mensualmente los resultados del equipo a partes interesadas.", tipo: "Práctica", cursoSitti: "Presentaciones de alto impacto" }
+  ],
+  "Liderazgo cercano": [
+    { titulo: "Check-in semanal de 15 min", desc: "Espacio individual con cada persona del equipo para revisar avances y obstáculos.", tipo: "Ritual", cursoSitti: "Feedback y conversaciones de desarrollo" },
+    { titulo: "Tablero de prioridades visible", desc: "Crear y mantener las 3 prioridades del equipo actualizadas cada semana.", tipo: "Herramienta", cursoSitti: "Gestión por objetivos" },
+    { titulo: "Retroalimentación SBI", desc: "Aplicar el modelo Situación-Comportamiento-Impacto en al menos 2 conversaciones por semana.", tipo: "Habilidad", cursoSitti: "Feedback y conversaciones de desarrollo" }
+  ],
+  "Cultura de aprendizaje": [
+    { titulo: "Retrospectiva quincenal", desc: "Facilitar retro de 30 min con el formato Start/Stop/Continue.", tipo: "Ritual", cursoSitti: "Facilitación de equipos" },
+    { titulo: "Biblioteca de aprendizaje compartida", desc: "Crear espacio donde el equipo comparte artículos o aprendizajes semanalmente.", tipo: "Sistema", cursoSitti: "Gestión del conocimiento" },
+    { titulo: "Buddy de aprendizaje", desc: "Asignar pares para compartir una habilidad durante 4 semanas.", tipo: "Programa", cursoSitti: "Mentoring y coaching" }
+  ],
+  "Motivacion e innovacion": [
+    { titulo: "Reconocimiento público semanal", desc: "Destacar en reunión un logro o comportamiento ejemplar de alguien del equipo.", tipo: "Hábito", cursoSitti: "Motivación y compromiso de equipos" },
+    { titulo: "Sesión de ideación mensual", desc: "Una hora mensual para que el equipo proponga mejoras sin restricciones.", tipo: "Ritual", cursoSitti: "Innovación y creatividad" },
+    { titulo: "Conversación de propósito", desc: "Conversación mensual con cada persona sobre su motivación y propósito laboral.", tipo: "Conversación", cursoSitti: "Inteligencia emocional en el liderazgo" }
+  ],
+  "Resolucion tactico-estrategica de problemas": [
+    { titulo: "Análisis de 5 porqués", desc: "Ante un problema, documentar el ejercicio antes de proponer solución.", tipo: "Técnica", cursoSitti: "Pensamiento analítico y resolución de problemas" },
+    { titulo: "Sesión de resolución estructurada", desc: "Facilitar resolución de problemas con el equipo usando Design Thinking básico.", tipo: "Taller", cursoSitti: "Facilitación de equipos" },
+    { titulo: "Matriz impacto-esfuerzo", desc: "Clasificar semanalmente las iniciativas del equipo en la matriz.", tipo: "Herramienta", cursoSitti: "Toma de decisiones estratégicas" }
+  ],
+  "Toma de decisiones agil y efectiva": [
+    { titulo: "Registro semanal de decisiones", desc: "Documentar las 3 decisiones más importantes con el criterio usado.", tipo: "Hábito", cursoSitti: "Toma de decisiones ágil" },
+    { titulo: "Framework DECIDE", desc: "Aplicar el framework DECIDE en al menos una decisión compleja al mes.", tipo: "Técnica", cursoSitti: "Pensamiento analítico y resolución de problemas" },
+    { titulo: "Delegación con contexto", desc: "Practicar delegar decisiones operativas con briefing claro de autonomía.", tipo: "Habilidad", cursoSitti: "Liderazgo situacional" }
+  ],
+  "Vision transformadora": [
+    { titulo: "Carta al equipo del futuro", desc: "Escribir carta describiendo el equipo en 6 meses y compartirla.", tipo: "Reflexión", cursoSitti: "Pensamiento estratégico y visión" },
+    { titulo: "Benchmark mensual", desc: "Investigar y presentar 2 mejores prácticas del sector cada mes.", tipo: "Investigación", cursoSitti: "Innovación y mejora continua" },
+    { titulo: "OKR de equipo trimestral", desc: "Definir con el equipo 1 objetivo ambicioso con 2-3 resultados clave medibles.", tipo: "Herramienta", cursoSitti: "Gestión por objetivos" }
+  ]
+}
+
+// Mapeo titulo modulo → key PLAN_ACTIVIDADES (ASCII normalizado)
+const MODULE_TO_PLAN_KEY: Record<string, string> = {
+  "Liderazgo cercano": "Liderazgo cercano",
+  "Comunicación": "Comunicacion",
+  "Cultura de aprendizaje": "Cultura de aprendizaje",
+  "Toma de decisiones ágil y efectiva": "Toma de decisiones agil y efectiva",
+  "Resolución táctico-estratégica de problemas": "Resolucion tactico-estrategica de problemas",
+  "Motivación e innovación": "Motivacion e innovacion",
+  "Visión transformadora": "Vision transformadora",
+}
+
+const CRONOGRAMA_SUGERIDO = [
+  { periodo: "Semana 1-2", titulo: "Observación y diagnóstico", desc: "Actividades de observación y diagnóstico inicial del equipo y contexto." },
+  { periodo: "Semana 3-4", titulo: "Primeras prácticas", desc: "Implementar las primeras prácticas y hábitos clave del plan." },
+  { periodo: "Mes 2", titulo: "Consolidación", desc: "Consolidar hábitos e iniciar medición de resultados e impacto." },
+  { periodo: "Mes 3", titulo: "Revisión y ajuste", desc: "Revisión del radar final y ajuste del plan según resultados." },
 ]
 
 // ─── ACTION CARD ─────────────────────────────────────────────────────────────
@@ -622,6 +680,47 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
             <p className="text-xs text-gray-500 px-4 pb-3">{mod.objective}</p>
             {isOpen && (
               <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3 bg-gray-50">
+                {(() => {
+                  const planKey = MODULE_TO_PLAN_KEY[mod.title]
+                  const actividades = planKey ? PLAN_ACTIVIDADES[planKey] : null
+                  if (!actividades || actividades.length === 0) return null
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-4 h-4 text-blue-500" />
+                        <h5 className="text-sm font-semibold text-gray-800">
+                          Actividades sugeridas vinculadas a Talento Sitti
+                        </h5>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {actividades.map((a, i) => (
+                          <div
+                            key={i}
+                            className="bg-white border border-gray-200 rounded-lg p-3 space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <h6 className="text-sm font-semibold text-gray-900">
+                                {a.titulo}
+                              </h6>
+                              <span className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {a.tipo}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              {a.desc}
+                            </p>
+                            <div className="flex items-center gap-1.5 pt-1 border-t border-gray-100">
+                              <BookOpen className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                              <span className="text-xs font-medium text-blue-700">
+                                {a.cursoSitti}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
                 {mod.actions.map((action) => (
                   <ActionCard
                     key={action.id}
@@ -636,6 +735,32 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
           </div>
         )
       })}
+
+      {/* Cronograma sugerido */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarDays className="w-5 h-5 text-blue-600" />
+          <h3 className="text-base font-semibold text-gray-900">Cronograma sugerido</h3>
+        </div>
+        <div className="space-y-3">
+          {CRONOGRAMA_SUGERIDO.map((c, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+            >
+              <div className="flex-shrink-0 w-20 text-center">
+                <span className="inline-block text-[10px] font-bold uppercase tracking-wide text-blue-700 bg-blue-100 border border-blue-200 px-2 py-1 rounded-full">
+                  {c.periodo}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h5 className="text-sm font-semibold text-gray-900">{c.titulo}</h5>
+                <p className="text-xs text-gray-600 mt-0.5">{c.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

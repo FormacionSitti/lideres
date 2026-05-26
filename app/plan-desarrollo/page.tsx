@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import DevelopmentPlan from "@/components/development-plan"
 import LeaderFollowupSummary from "@/components/leader-followup-summary"
+import PlanRadarComparison from "@/components/plan-radar-comparison"
 import { Target, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -95,6 +96,17 @@ export default function PlanDesarrolloPage() {
         {selectedLeader && (
           <div className="mb-6">
             <LeaderFollowupSummary leader={selectedLeader} key={`summary-${selectedLeader.id}`} />
+          </div>
+        )}
+
+        {/* Radar comparativo Inicial vs. Final/Promedio */}
+        {selectedLeader && (
+          <div className="mb-6">
+            <PlanRadarComparison
+              leaderId={selectedLeader.id}
+              leaderName={selectedLeader.name}
+              key={`radar-${selectedLeader.id}`}
+            />
           </div>
         )}
 
