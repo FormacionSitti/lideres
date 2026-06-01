@@ -329,6 +329,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
+    // === Documentos PDF del líder ===
+    if (action === "getLeaderDocuments") {
+      const { leader_id } = data
+      const { data: docs, error } = await supabase
+        .from("leader_documents")
+        .select("*")
+        .eq("leader_id", Number(leader_id))
+        .order("created_at", { ascending: false })
+      if (error) {
+        if (error.code === "42P01") return NextResponse.json({ data: [], tableMissing: true })
+        throw error
+      }
+      return NextResponse.json({ data: docs })
+    }
+
+    if (action === "addLeaderDocument") {
+      const { leader_id, file_name, file_path, file_size } = data
+      const { data: doc, error } = await supabase
+        .from("leader_documents")
+        .insert({ leader_id: Number(leader_id), file_name, file_path, file_size: file_size || null })
+        .select()
+        .single()
+      if (error) {
+        if (error.code === "42P01") return NextResponse.json({ error: "Tabla leader_documents no existe. Ejecuta scripts/create-leader-documents-table.sql", tableMissing: true }, { status: 400 })
+        throw error
+      }
+      return NextResponse.json({ data: doc })
+    }
+
+    if (action === "updateLeaderDocument") {
+      const { id, notes, competencies_flagged } = data
+      const { data: doc, error } = await supabase
+        .from("leader_documents")
+        .update({ notes: notes || null, competencies_flagged: competencies_flagged || [], updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single()
+      if (error) throw error
+      return NextResponse.json({ data: doc })
+    }
+
+    if (action === "deleteLeaderDocument") {
+      const { id } = data
+      const { error } = await supabase.from("leader_documents").delete().eq("id", id)
+      if (error) throw error
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
   } catch (error: any) {
     console.error("Error en API:", error)

@@ -7,7 +7,7 @@ import {
   Zap, Wrench, Sparkles, Compass, Target,
   ChevronDown, ChevronRight, AlertTriangle, TrendingUp,
   CheckSquare, XCircle, Clock, Cloud, CloudOff, RefreshCw,
-  Filter, Sparkle
+  Filter, Sparkle, ExternalLink, BookOpen
 } from "lucide-react"
 
 function normalizeText(text: string) {
@@ -50,6 +50,11 @@ const MODULES = [
     colorBg: "bg-blue-100", colorText: "text-blue-600", colorBar: "bg-blue-500", colorDot: "bg-blue-500",
     colorBorder: "border-blue-200", colorFill: "bg-blue-500",
     objective: "Mide la gestión del líder con el equipo. Construir presencia, escucha activa y vínculo de confianza con cada integrante.",
+    sittiCourses: [
+      { title: "Liderazgo Situacional", description: "Adapta tu estilo de liderazgo al nivel de madurez de cada colaborador.", url: "https://talentositti.com/cursos/liderazgo-situacional", duration: "4h" },
+      { title: "Escucha Activa y Empatía", description: "Desarrolla la capacidad de escuchar con intención para fortalecer vínculos de confianza.", url: "https://talentositti.com/cursos/escucha-activa-empatia", duration: "2h" },
+      { title: "Feedback Efectivo", description: "Aprende a dar y recibir retroalimentación constructiva que impulse el desempeño.", url: "https://talentositti.com/cursos/feedback-efectivo", duration: "3h" },
+    ],
     actions: [
       { id: "lid1", week: 1, text: "Realizar conversaciones uno a uno con cada miembro del equipo (45 min)", howTo: ["Agendar en bloques sin interrupciones", "Indagar: trabajo, motivación y necesidades de apoyo", "Tomar notas estructuradas por persona"], deliverable: "Matriz de insights individuales por colaborador", questions: ["¿Qué necesitas de mí como líder?", "¿En qué momentos te sientes más apoyado?", "¿Qué barreras estás enfrentando hoy?"] },
       { id: "lid2", week: 1, text: "Mapear estilos de trabajo y necesidades individuales", howTo: ["Identificar perfil de cada miembro (autónomo, colaborativo, directivo)", "Adaptar estilo de gestión por persona", "Documentar preferencias de comunicación"], deliverable: "Mapa de estilos del equipo" },
@@ -63,6 +68,11 @@ const MODULES = [
     colorBg: "bg-cyan-100", colorText: "text-cyan-600", colorBar: "bg-cyan-500", colorDot: "bg-cyan-500",
     colorBorder: "border-cyan-200", colorFill: "bg-cyan-500",
     objective: "Mide la alineación estratégica del equipo. Asegurar que todos comparten el mismo norte y entienden su rol en el resultado.",
+    sittiCourses: [
+      { title: "Comunicación Asertiva", description: "Expresa tus ideas con claridad y confianza sin generar conflicto.", url: "https://talentositti.com/cursos/comunicacion-asertiva", duration: "3h" },
+      { title: "Narrativa y Storytelling para Líderes", description: "Comunica la visión y los resultados de forma que inspire y movilice equipos.", url: "https://talentositti.com/cursos/storytelling-lideres", duration: "2h" },
+      { title: "Reuniones Efectivas", description: "Facilita reuniones con propósito, acuerdos y seguimiento real.", url: "https://talentositti.com/cursos/reuniones-efectivas", duration: "2h" },
+    ],
     actions: [
       { id: "com1", week: 2, text: "Definir y comunicar la visión estratégica del equipo", howTo: ["Redactar visión en 1 frase clara y memorable", "Conectarla con objetivos trimestrales", "Presentarla al equipo en reunión dedicada"], deliverable: "Documento de visión y narrativa estratégica" },
       { id: "com2", week: 2, text: "Estructurar reunión semanal de alineación con agenda fija", howTo: ["Día y hora fijos, máximo 45 min", "Agenda: prioridades, bloqueos, métricas, acuerdos", "Acta breve enviada en menos de 2h"], deliverable: "Plantilla de agenda y actas semanales" },
@@ -76,6 +86,11 @@ const MODULES = [
     colorBg: "bg-green-100", colorText: "text-green-600", colorBar: "bg-green-500", colorDot: "bg-green-500",
     colorBorder: "border-green-200", colorFill: "bg-green-500",
     objective: "Mide el aprendizaje a nivel de equipo. Convertir cada experiencia y error en conocimiento útil para todos.",
+    sittiCourses: [
+      { title: "Mentoría y Coaching de Equipos", description: "Herramientas para acompañar el aprendizaje continuo de tus colaboradores.", url: "https://talentositti.com/cursos/mentoria-coaching-equipos", duration: "4h" },
+      { title: "Gestión del Conocimiento", description: "Crea sistemas para capturar, compartir y aplicar el aprendizaje organizacional.", url: "https://talentositti.com/cursos/gestion-del-conocimiento", duration: "3h" },
+      { title: "Aprendizaje Ágil", description: "Desarrolla la capacidad de aprender y adaptarse rápidamente ante los cambios.", url: "https://talentositti.com/cursos/aprendizaje-agil", duration: "2h" },
+    ],
     actions: [
       { id: "apr1", week: 3, text: "Crear espacio quincenal de aprendizaje compartido", howTo: ["Sesión de 30 min cada 2 semanas", "Cada vez un miembro presenta un tema o caso", "Capturar 3 takeaways accionables"], deliverable: "Calendario de sesiones y bitácora de takeaways" },
       { id: "apr2", week: 3, text: "Implementar retrospectivas regulares del equipo", howTo: ["Frecuencia: mensual mínimo", "Formato: qué funcionó, qué no, qué cambiamos", "Definir 1-3 acciones concretas con responsable"], deliverable: "Acta de retrospectiva con acciones" },
@@ -89,6 +104,11 @@ const MODULES = [
     colorBg: "bg-amber-100", colorText: "text-amber-600", colorBar: "bg-amber-500", colorDot: "bg-amber-500",
     colorBorder: "border-amber-200", colorFill: "bg-amber-500",
     objective: "Mide la rapidez y criterio en decisiones. Decidir mejor y más rápido sin sacrificar calidad ni alineación.",
+    sittiCourses: [
+      { title: "Pensamiento Crítico para Líderes", description: "Evalúa información, analiza alternativas y decide con mayor claridad y criterio.", url: "https://talentositti.com/cursos/pensamiento-critico-lideres", duration: "4h" },
+      { title: "Delegación Efectiva", description: "Delega con confianza asignando las decisiones al nivel correcto del equipo.", url: "https://talentositti.com/cursos/delegacion-efectiva", duration: "2h" },
+      { title: "Agilidad en la Toma de Decisiones", description: "Frameworks prácticos para decidir rápido con información incompleta.", url: "https://talentositti.com/cursos/agilidad-decisiones", duration: "3h" },
+    ],
     actions: [
       { id: "dec1", week: 4, text: "Definir framework de toma de decisiones (RACI o similar)", howTo: ["Listar tipos de decisiones recurrentes", "Asignar Responsable, Aprobador, Consultado, Informado", "Difundir y validar con el equipo"], deliverable: "Matriz RACI del equipo" },
       { id: "dec2", week: 4, text: "Identificar y eliminar cuellos de botella decisionales", howTo: ["Listar las últimas 10 decisiones lentas", "Identificar dónde se atascó cada una", "Definir nuevo flujo o delegación"], deliverable: "Plan de aceleración decisional" },
@@ -102,6 +122,11 @@ const MODULES = [
     colorBg: "bg-orange-100", colorText: "text-orange-600", colorBar: "bg-orange-500", colorDot: "bg-orange-500",
     colorBorder: "border-orange-200", colorFill: "bg-orange-500",
     objective: "Mide la capacidad de resolver problemas estructurales. Atacar las causas raíz y diseñar soluciones sistémicas, no parches.",
+    sittiCourses: [
+      { title: "Resolución de Conflictos", description: "Aborda los conflictos del equipo de forma constructiva y genera soluciones duraderas.", url: "https://talentositti.com/cursos/resolucion-conflictos", duration: "3h" },
+      { title: "Design Thinking Aplicado", description: "Metodología centrada en las personas para resolver problemas complejos con creatividad.", url: "https://talentositti.com/cursos/design-thinking", duration: "5h" },
+      { title: "Pensamiento Sistémico", description: "Analiza las interacciones y dinámicas del sistema para resolver problemas de raíz.", url: "https://talentositti.com/cursos/pensamiento-sistemico", duration: "4h" },
+    ],
     actions: [
       { id: "res1", week: 5, text: "Mapear problemas estructurales recurrentes del área", howTo: ["Listar los 10 problemas más frecuentes en 90 días", "Clasificar: táctico vs estructural", "Priorizar por impacto y frecuencia"], deliverable: "Matriz de problemas priorizados" },
       { id: "res2", week: 5, text: "Aplicar análisis de causa raíz a 3 problemas críticos", howTo: ["Usar técnica de 5 Por qués o Ishikawa", "Documentar causas reales (no síntomas)", "Validar hallazgos con el equipo"], deliverable: "Reporte de causa raíz por problema" },
@@ -115,6 +140,11 @@ const MODULES = [
     colorBg: "bg-rose-100", colorText: "text-rose-600", colorBar: "bg-rose-500", colorDot: "bg-rose-500",
     colorBorder: "border-rose-200", colorFill: "bg-rose-500",
     objective: "Mide la capacidad de inspirar y transformar. Activar la energía del equipo y abrir espacios para nuevas ideas.",
+    sittiCourses: [
+      { title: "Inteligencia Emocional para Líderes", description: "Reconoce y gestiona tus emociones para inspirar y motivar a tu equipo.", url: "https://talentositti.com/cursos/inteligencia-emocional-lideres", duration: "4h" },
+      { title: "Innovación y Creatividad en el Trabajo", description: "Técnicas para estimular ideas disruptivas y cultivar una cultura de innovación.", url: "https://talentositti.com/cursos/innovacion-creatividad", duration: "3h" },
+      { title: "Propósito y Motivación de Equipos", description: "Conecta a tu equipo con el propósito organizacional para aumentar el compromiso.", url: "https://talentositti.com/cursos/proposito-motivacion", duration: "2h" },
+    ],
     actions: [
       { id: "mot1", week: 6, text: "Identificar drivers individuales de motivación", howTo: ["Conversación dirigida con cada miembro (20 min)", "Indagar: logro, autonomía, propósito, dominio, vínculo", "Documentar driver principal de cada persona"], deliverable: "Mapa de motivadores del equipo" },
       { id: "mot2", week: 6, text: "Crear espacio para ideas e iniciativas del equipo", howTo: ["Buzón o canal de ideas siempre abierto", "Sesión mensual para revisar y priorizar", "Compromiso de respuesta a cada propuesta"], deliverable: "Espacio de ideación activo" },
@@ -128,6 +158,11 @@ const MODULES = [
     colorBg: "bg-indigo-100", colorText: "text-indigo-600", colorBar: "bg-indigo-500", colorDot: "bg-indigo-500",
     colorBorder: "border-indigo-200", colorFill: "bg-indigo-500",
     objective: "Mide la capacidad de evolucionar y mejorar. Anticipar el futuro del área y guiar al equipo hacia un mejor estado.",
+    sittiCourses: [
+      { title: "Liderazgo Transformacional", description: "Desarrolla las habilidades para liderar procesos de cambio y transformar organizaciones.", url: "https://talentositti.com/cursos/liderazgo-transformacional", duration: "5h" },
+      { title: "Gestión del Cambio", description: "Guía a tu equipo a través de transiciones organizacionales con menor resistencia.", url: "https://talentositti.com/cursos/gestion-del-cambio", duration: "4h" },
+      { title: "Planeación Estratégica", description: "Define objetivos de largo plazo y construye planes de acción alineados a la visión.", url: "https://talentositti.com/cursos/planeacion-estrategica", duration: "4h" },
+    ],
     actions: [
       { id: "vis1", week: 7, text: "Articular visión transformadora del área a 12 meses", howTo: ["Imaginar el área dentro de 1 año", "Describirla en 3 dimensiones: equipo, procesos, resultados", "Validarla con stakeholders clave"], deliverable: "Documento de visión a 12 meses" },
       { id: "vis2", week: 7, text: "Identificar oportunidades de evolución del modelo actual", howTo: ["Auditar procesos clave: qué deja de tener sentido", "Comparar con buenas prácticas externas", "Listar 5 oportunidades de transformación"], deliverable: "Lista priorizada de oportunidades" },
@@ -631,6 +666,46 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
                     onUpdate={handleUpdate}
                   />
                 ))}
+                {/* Cursos Sitti recomendados */}
+                {(mod as any).sittiCourses?.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="w-4 h-4 text-purple-600" />
+                      <span className="text-xs font-bold text-purple-700 uppercase tracking-wide">
+                        Cursos Talento Sitti recomendados
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {(mod as any).sittiCourses.map((course: any) => (
+                        <a
+                          key={course.url}
+                          href={course.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-3 p-3 bg-white rounded-lg border border-purple-100 hover:border-purple-300 hover:shadow-sm transition-all group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-200 transition-colors">
+                            <GraduationCap className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">
+                                {course.title}
+                              </span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full font-medium">
+                                  {course.duration}
+                                </span>
+                                <ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-purple-500" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{course.description}</p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
