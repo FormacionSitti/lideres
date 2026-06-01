@@ -8,6 +8,7 @@ import { es } from "date-fns/locale"
 import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type { Leader, Followup } from "@/lib/types"
+import { getLeaderLevel, LEVEL_LABELS, LEVEL_COLORS } from "@/lib/leader-levels"
 import { useToast } from "@/components/ui/use-toast"
 import { RadarChart } from "@/components/radar-chart"
 import { CoachingInterpretation } from "@/components/coaching-interpretation"
@@ -928,11 +929,20 @@ export function FollowupList({ leaders }: FollowupListProps) {
                 <SelectValue placeholder="Seleccionar líder" />
               </SelectTrigger>
               <SelectContent>
-                {uniqueLeaders.map((leader) => (
-                  <SelectItem key={leader.id} value={leader.id.toString()}>
-                    {leader.name}
-                  </SelectItem>
-                ))}
+                {uniqueLeaders.map((leader) => {
+                  const lvl = getLeaderLevel(leader.name)
+                  const colors = LEVEL_COLORS[lvl]
+                  return (
+                    <SelectItem key={leader.id} value={leader.id.toString()}>
+                      <span className="flex items-center gap-2">
+                        {leader.name}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${colors.badge}`}>
+                          {LEVEL_LABELS[lvl]}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
 
@@ -986,28 +996,35 @@ export function FollowupList({ leaders }: FollowupListProps) {
           <div className="space-y-4">
             <p className="text-sm text-gray-500">Selecciona hasta 5 líderes para comparar:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {uniqueLeaders.map((leader) => (
-                <div key={leader.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`leader-${leader.id}`}
-                    checked={selectedLeaders.includes(leader.id.toString())}
-                    onCheckedChange={(checked) => {
-                      if (checked && selectedLeaders.length >= 5) {
-                        toast({
-                          title: "Límite alcanzado",
-                          description: "Solo puedes comparar hasta 5 líderes",
-                          variant: "destructive",
-                        })
-                        return
-                      }
-                      handleLeaderSelection(leader.id.toString(), checked as boolean)
-                    }}
-                  />
-                  <Label htmlFor={`leader-${leader.id}`} className="text-sm cursor-pointer">
-                    {leader.name}
-                  </Label>
-                </div>
-              ))}
+              {uniqueLeaders.map((leader) => {
+                const lvl = getLeaderLevel(leader.name)
+                const colors = LEVEL_COLORS[lvl]
+                return (
+                  <div key={leader.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`leader-${leader.id}`}
+                      checked={selectedLeaders.includes(leader.id.toString())}
+                      onCheckedChange={(checked) => {
+                        if (checked && selectedLeaders.length >= 5) {
+                          toast({
+                            title: "Límite alcanzado",
+                            description: "Solo puedes comparar hasta 5 líderes",
+                            variant: "destructive",
+                          })
+                          return
+                        }
+                        handleLeaderSelection(leader.id.toString(), checked as boolean)
+                      }}
+                    />
+                    <Label htmlFor={`leader-${leader.id}`} className="text-sm cursor-pointer flex items-center gap-1.5">
+                      {leader.name}
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${colors.badge}`}>
+                        {LEVEL_LABELS[lvl]}
+                      </span>
+                    </Label>
+                  </div>
+                )
+              })}
             </div>
 
             {selectedLeaders.length >= 2 && (

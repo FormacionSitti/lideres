@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { TopicRating } from "@/components/topic-rating"
 import type { Leader, Topic } from "@/lib/types"
 import { format, parseISO, set } from "date-fns"
+import { getLeaderLevel, LEVEL_LABELS, LEVEL_COLORS } from "@/lib/leader-levels"
 
 interface FollowupFormProps {
   leaders: Leader[]
@@ -323,11 +324,20 @@ function FollowupFormContent({ leaders, topics }: FollowupFormProps) {
                   <SelectValue placeholder="Seleccionar líder" />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueLeaders.map((leader) => (
-                    <SelectItem key={leader.id} value={leader.id.toString()}>
-                      {leader.name}
-                    </SelectItem>
-                  ))}
+                  {uniqueLeaders.map((leader) => {
+                    const lvl = getLeaderLevel(leader.name)
+                    const colors = LEVEL_COLORS[lvl]
+                    return (
+                      <SelectItem key={leader.id} value={leader.id.toString()}>
+                        <span className="flex items-center gap-2">
+                          {leader.name}
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${colors.badge}`}>
+                            {LEVEL_LABELS[lvl]}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
             </div>
