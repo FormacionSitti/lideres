@@ -377,6 +377,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
+    if (action === "deleteFollowup") {
+      const { followup_id } = data
+      const id = Number(followup_id)
+      // Borrar primero los temas asociados (FK constraint)
+      const { error: topicsError } = await supabase.from("followup_topics").delete().eq("followup_id", id)
+      if (topicsError) throw topicsError
+      const { error: followupError } = await supabase.from("followups").delete().eq("id", id)
+      if (followupError) throw followupError
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json({ error: "Acción inválida" }, { status: 400 })
   } catch (error: any) {
     console.error("Error en API:", error)

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format, differenceInDays, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart } from "lucide-react"
+import { Download, ArrowRight, BarChart, Database, RefreshCw, FileText, PieChart, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type { Leader, Followup } from "@/lib/types"
 import { getLeaderLevel, LEVEL_LABELS, LEVEL_COLORS } from "@/lib/leader-levels"
@@ -33,6 +33,8 @@ export function FollowupList({ leaders }: FollowupListProps) {
   const [showEvolution, setShowEvolution] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
   const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -176,6 +178,28 @@ export function FollowupList({ leaders }: FollowupListProps) {
 
   const handleContinueFollowup = (followupId: string) => {
     router.push(`/?previous=${followupId}`)
+  }
+
+  const handleDeleteFollowup = async (followupId: string) => {
+    setDeletingId(followupId)
+    try {
+      const response = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteFollowup", data: { followup_id: followupId } }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || "Error al eliminar")
+      }
+      setFollowups((prev) => prev.filter((f) => f.id !== followupId))
+      setConfirmDeleteId(null)
+      toast({ title: "Seguimiento eliminado", description: "El seguimiento fue borrado exitosamente." })
+    } catch (error) {
+      toast({ title: "Error", description: error instanceof Error ? error.message : "No se pudo eliminar.", variant: "destructive" })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   // Manejar selección múltiple de líderes
@@ -1102,10 +1126,37 @@ export function FollowupList({ leaders }: FollowupListProps) {
                     </h3>
                     <p className="text-sm text-muted-foreground">{formatDateWithTimezone(followup.followup_date)}</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => handleContinueFollowup(followup.id)}>
-                    Continuar Seguimiento
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {confirmDeleteId === followup.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-red-600 font-medium">¿Eliminar?</span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={deletingId === followup.id}
+                          onClick={() => handleDeleteFollowup(followup.id)}
+                        >
+                          {deletingId === followup.id ? "..." : "Sí"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setConfirmDeleteId(null)}>
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setConfirmDeleteId(followup.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => handleContinueFollowup(followup.id)}>
+                      Continuar Seguimiento
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
