@@ -379,11 +379,10 @@ export async function POST(request: Request) {
 
     if (action === "deleteFollowup") {
       const { followup_id } = data
-      const id = Number(followup_id)
-      // Borrar primero los temas asociados (FK constraint)
-      const { error: topicsError } = await supabase.from("followup_topics").delete().eq("followup_id", id)
+      // followup_id es UUID (string) — no convertir a número
+      const { error: topicsError } = await supabase.from("followup_topics").delete().eq("followup_id", followup_id)
       if (topicsError) throw topicsError
-      const { error: followupError } = await supabase.from("followups").delete().eq("id", id)
+      const { error: followupError } = await supabase.from("followups").delete().eq("id", followup_id)
       if (followupError) throw followupError
       return NextResponse.json({ success: true })
     }
