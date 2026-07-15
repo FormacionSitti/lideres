@@ -71,15 +71,19 @@ export const COMPETENCIES: Competency[] = [
   {
     key: "comunicacion",
     label: "Comunicación",
-    definition: "Definición pendiente por confirmar (competencia transversal).",
-    pending: true,
+    definition:
+      "Es la capacidad de transmitir y recibir información de manera clara, oportuna y efectiva, adaptando el mensaje al receptor y al contexto, evitando malentendidos y generando alineación entre personas, equipos y objetivos.",
+    whyMatters:
+      "En una organización tan interdependiente como Sitti, la comunicación deficiente genera errores operativos, desalineación y fricción. Una comunicación clara es la base de la confianza y la eficiencia.",
     aliases: ["comunicacion"],
   },
   {
     key: "cultura_aprendizaje",
     label: "Cultura de aprendizaje",
-    definition: "Definición pendiente por confirmar (competencia transversal).",
-    pending: true,
+    definition:
+      "Es la disposición genuina y sostenida de aprender de forma continua: de los errores, las experiencias, el feedback y los desafíos. Implica preguntar, aplicar lo aprendido y compartir el conocimiento con otros para que el equipo también crezca.",
+    whyMatters:
+      "Sitti opera en un entorno de cambio constante vinculado a la tecnología y la movilidad urbana. La organización que aprende más rápido tiene ventaja. Esta competencia es el motor del Modelo Evolucionar.",
     aliases: ["cultura de aprendizaje", "aprendizaje"],
   },
 ]
