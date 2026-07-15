@@ -17,13 +17,13 @@ const supabase = createClient(
 )
 
 const COMPETENCIES = [
-  { key: "liderazgo_cercano", label: "Liderazgo cercano", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { key: "resolucion_problemas", label: "Resolución táctico-estratégica", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  { key: "liderazgo_cercano", label: "Liderazgo consciente", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { key: "resolucion_problemas", label: "Resolución de problemas", color: "bg-orange-100 text-orange-700 border-orange-200" },
   { key: "vision_transformadora", label: "Visión transformadora", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { key: "toma_decisiones", label: "Toma de decisiones ágil", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  { key: "toma_decisiones", label: "Toma de decisiones", color: "bg-amber-100 text-amber-700 border-amber-200" },
   { key: "cultura_aprendizaje", label: "Cultura de aprendizaje", color: "bg-green-100 text-green-700 border-green-200" },
   { key: "comunicacion", label: "Comunicación", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-  { key: "motivacion_innovacion", label: "Motivación e innovación", color: "bg-rose-100 text-rose-700 border-rose-200" },
+  { key: "motivacion_innovacion", label: "Innovación con propósito", color: "bg-rose-100 text-rose-700 border-rose-200" },
 ]
 
 interface LeaderDocument {

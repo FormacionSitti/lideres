@@ -21,6 +21,17 @@ interface FollowupListProps {
   leaders: Leader[]
 }
 
+// Normaliza etiquetas para comparar sin importar acentos/mayúsculas
+// (los nombres en la BD vienen sin acentos y pueden diferir del display).
+function normLabel(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export function FollowupList({ leaders }: FollowupListProps) {
   const [selectedLeader, setSelectedLeader] = useState("")
   const [selectedLeaders, setSelectedLeaders] = useState<string[]>([])
@@ -155,18 +166,18 @@ export function FollowupList({ leaders }: FollowupListProps) {
 
     // Ordenar para mejor visualización en el radar
     const preferredOrder = [
-      "Liderazgo cercano",
-      "Resolución táctico-estratégica de problemas",
+      "Liderazgo consciente",
+      "Resolución de problemas",
       "Visión transformadora",
-      "Toma de decisiones ágil y efectiva",
+      "Toma de decisiones",
       "Cultura de aprendizaje",
       "Comunicación",
-      "Motivación e innovación",
-    ]
+      "Innovación con propósito",
+    ].map(normLabel)
 
     data.sort((a, b) => {
-      const indexA = preferredOrder.indexOf(a.label)
-      const indexB = preferredOrder.indexOf(b.label)
+      const indexA = preferredOrder.indexOf(normLabel(a.label))
+      const indexB = preferredOrder.indexOf(normLabel(b.label))
       if (indexA === -1 && indexB === -1) return a.label.localeCompare(b.label)
       if (indexA === -1) return 1
       if (indexB === -1) return -1
@@ -246,37 +257,39 @@ export function FollowupList({ leaders }: FollowupListProps) {
   const getComparisonDatasets = () => {
     const colors = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2"]
     const dimensions = [
-      "Liderazgo cercano",
-      "Resolución táctico-estratégica de problemas",
+      "Liderazgo consciente",
+      "Resolución de problemas",
       "Visión transformadora",
-      "Toma de decisiones ágil y efectiva",
+      "Toma de decisiones",
       "Cultura de aprendizaje",
       "Comunicación",
-      "Motivación e innovación",
+      "Innovación con propósito",
     ]
 
     return selectedLeaders.map((leaderId, index) => {
       const leaderFollowups = allFollowupsByLeader[leaderId] || []
       const leader = uniqueLeaders.find((l) => l.id.toString() === leaderId)
 
-      // Calcular promedio por dimensión
+      // Calcular promedio por dimensión (match normalizado sin acentos)
       const topicRatings: Record<string, { total: number; count: number }> = {}
       leaderFollowups.forEach((f) => {
         f.topics.forEach((t) => {
-          if (!topicRatings[t.name]) {
-            topicRatings[t.name] = { total: 0, count: 0 }
+          const key = normLabel(t.name)
+          if (!topicRatings[key]) {
+            topicRatings[key] = { total: 0, count: 0 }
           }
-          topicRatings[t.name].total += t.rating
-          topicRatings[t.name].count += 1
+          topicRatings[key].total += t.rating
+          topicRatings[key].count += 1
         })
       })
 
-      const data = dimensions.map((dimension) => ({
-        dimension,
-        value: topicRatings[dimension]
-          ? Number((topicRatings[dimension].total / topicRatings[dimension].count).toFixed(2))
-          : 0,
-      }))
+      const data = dimensions.map((dimension) => {
+        const r = topicRatings[normLabel(dimension)]
+        return {
+          dimension,
+          value: r ? Number((r.total / r.count).toFixed(2)) : 0,
+        }
+      })
 
       return {
         label: leader?.name || `Líder ${index + 1}`,
@@ -1062,13 +1075,13 @@ export function FollowupList({ leaders }: FollowupListProps) {
                 <RadarChart
                   datasets={getComparisonDatasets()}
                   dimensions={[
-                    "Liderazgo cercano",
-                    "Resolución táctico-estratégica de problemas",
+                    "Liderazgo consciente",
+                    "Resolución de problemas",
                     "Visión transformadora",
-                    "Toma de decisiones ágil y efectiva",
+                    "Toma de decisiones",
                     "Cultura de aprendizaje",
                     "Comunicación",
-                    "Motivación e innovación",
+                    "Innovación con propósito",
                   ]}
                   maxValue={5}
                   size={400}

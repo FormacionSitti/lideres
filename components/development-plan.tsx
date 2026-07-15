@@ -10,7 +10,11 @@ import {
   Filter, Sparkle, ExternalLink, BookOpen, Timer,
   Shield, Building2,
 } from "lucide-react"
-import { getLeaderLevel, LEVEL_LABELS, LEVEL_COLORS, type LeaderLevel } from "@/lib/leader-levels"
+import {
+  getLeaderLevel, getLeaderType, LEVEL_LABELS, LEVEL_COLORS,
+  TYPE_LABELS_SHORT, TYPE_COLORS, type LeaderLevel, type LeaderType,
+} from "@/lib/leader-levels"
+import { findCompetency } from "@/lib/competencies"
 
 function normalizeText(text: string) {
   return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim()
@@ -50,8 +54,9 @@ interface PlanModule {
   colorBg: string; colorText: string; colorBar: string; colorDot: string
   colorBorder: string; colorFill: string
   objective: string
-  actionsT: PlanAction[]   // acciones para líderes TÁCTICOS
-  actionsE: PlanAction[]   // acciones para líderes ESTRATÉGICOS
+  actionsT: PlanAction[]   // TÁCTICO + líder formal (con equipo a cargo)
+  actionsE: PlanAction[]   // ESTRATÉGICO
+  actionsP: PlanAction[]   // TÁCTICO + líder de proceso (proyecto, sin personas a cargo)
   sittiCourses: { title: string; description: string; url: string; duration: string }[]
 }
 
@@ -60,7 +65,7 @@ interface PlanModule {
 const MODULES: PlanModule[] = [
   {
     id: "liderazgo",
-    title: "Liderazgo cercano",
+    title: "Liderazgo consciente",
     icon: "users",
     colorBg: "bg-blue-100", colorText: "text-blue-600", colorBar: "bg-blue-500",
     colorDot: "bg-blue-500", colorBorder: "border-blue-200", colorFill: "bg-blue-500",
@@ -121,6 +126,33 @@ const MODULES: PlanModule[] = [
         text: "Escribe y comparte el mensaje de liderazgo que quieres que tu equipo escuche esta semana",
         howTo: ["3 líneas máx: qué logro celebras, qué reto enfrentan, qué esperas", "Envíalo por el canal habitual del equipo", "Haz seguimiento: ¿lo leyeron?, ¿generó reacción?"],
         deliverable: "Mensaje enviado con evidencia de recepción",
+      },
+    ],
+    actionsP: [
+      {
+        id: "lid_p1", time: "30 min",
+        text: "Ten una conversación 1:1 con el participante del proyecto que más lo necesita hoy",
+        howTo: ["Identifica a quien tiene más carga o fricción en el proyecto", "Pregunta: '¿qué necesitas de mí para avanzar?'", "Acuerda 1 acción concreta aunque esa persona no dependa de ti"],
+        deliverable: "1 acuerdo de apoyo documentado con un involucrado del proyecto",
+        questions: ["¿Qué te está frenando en el proyecto esta semana?"],
+      },
+      {
+        id: "lid_p2", time: "20 min",
+        text: "Haz una ronda con los involucrados del proyecto: '¿qué obstáculo puedo ayudarte a quitar?'",
+        howTo: ["Contacta a los actores clave del proyecto (aunque sean de otras áreas)", "Escucha sin justificar", "Resuelve o escala 1 obstáculo antes de terminar el día"],
+        deliverable: "Al menos 1 obstáculo del proyecto eliminado o escalado",
+      },
+      {
+        id: "lid_p3", time: "10 min",
+        text: "Reconoce de forma específica a alguien que aportó al proyecto, aunque no esté a tu cargo",
+        howTo: ["Elige un aporte concreto y reciente", "Nómbralo en el canal del proyecto o ante quien corresponda", "Explica por qué ese aporte movió el resultado"],
+        deliverable: "Reconocimiento enviado (guarda el mensaje)",
+      },
+      {
+        id: "lid_p4", time: "20 min",
+        text: "Identifica 1 hábito tuyo que genera fricción al coordinar sin autoridad y ajústalo",
+        howTo: ["Piensa cómo influyes cuando no tienes mando formal", "Detecta 1 comportamiento que resta (imponer, asumir, no escuchar)", "Define el cambio y practícalo en la próxima interacción del proyecto"],
+        deliverable: "1 hábito de liderazgo por influencia identificado y en práctica",
       },
     ],
   },
@@ -190,6 +222,33 @@ const MODULES: PlanModule[] = [
         deliverable: "Protocolo documentado y socializado (máx 1 página)",
       },
     ],
+    actionsP: [
+      {
+        id: "com_p1", time: "30 min",
+        text: "Revisa que cada tarea del proyecto tenga responsable y fecha, aunque dependa de otras áreas",
+        howTo: ["Abre el tablero o cronograma del proyecto", "Detecta tareas sin responsable o sin fecha", "Confirma con cada dueño de tarea hoy mismo"],
+        deliverable: "Todas las tareas del proyecto con responsable y fecha visibles",
+      },
+      {
+        id: "com_p2", time: "20 min",
+        text: "Diseña la agenda de tu próxima reunión de proyecto con máx 3 puntos y tiempos",
+        howTo: ["Define los 3 temas más críticos del avance", "Asigna tiempo a cada punto", "Envíala a los involucrados con 24h de anticipación"],
+        deliverable: "Agenda de proyecto enviada con anticipación",
+      },
+      {
+        id: "com_p3", time: "15 min",
+        text: "Envía un mensaje corto con el estado y la prioridad #1 del proyecto a los involucrados",
+        howTo: ["Escribe: dónde vamos, qué sigue, qué necesito de cada quién", "Máx 5 líneas, sin tecnicismos", "Pide confirmación de lectura"],
+        deliverable: "Mensaje de estado enviado con confirmación de los involucrados",
+      },
+      {
+        id: "com_p4", time: "20 min",
+        text: "Confirma con 2 stakeholders que entienden el objetivo del proyecto igual que tú",
+        howTo: ["Pregúntales, uno a uno, qué creen que debe lograr el proyecto", "Escucha sin corregir en el momento", "Si hay diferencia → hay brecha de alineación que cerrar"],
+        deliverable: "Brecha de alineación detectada (sí/no) + acción correctiva si aplica",
+        questions: ["¿Cuál crees que es el objetivo principal de este proyecto?"],
+      },
+    ],
   },
 
   {
@@ -256,11 +315,37 @@ const MODULES: PlanModule[] = [
         deliverable: "Plan de 30 días: habilidad + método + métrica de evidencia",
       },
     ],
+    actionsP: [
+      {
+        id: "apr_p1", time: "20 min",
+        text: "Documenta 1 lección aprendida del proyecto y compártela con los involucrados",
+        howTo: ["Elige un aprendizaje o error real y reciente del proyecto", "Descríbelo sin culpables: qué pasó, qué aprendimos, qué ajustamos", "Compártelo en el canal del proyecto"],
+        deliverable: "Lección aprendida documentada y compartida",
+      },
+      {
+        id: "apr_p2", time: "20 min",
+        text: "Haz una retrospectiva exprés del avance: '1 que funcionó, 1 que no, 1 que cambiamos'",
+        howTo: ["10 min con los involucrados clave", "Captura las respuestas en el momento", "Define 1 sola acción de mejora con responsable"],
+        deliverable: "Nota de retrospectiva con 1 acción y responsable",
+      },
+      {
+        id: "apr_p3", time: "30 min",
+        text: "Identifica el retrabajo más recurrente del proyecto y escribe su causa raíz",
+        howTo: ["Detecta qué se rehace o se traba una y otra vez", "Aplica '5 Por qués' en conversación rápida", "Escribe la causa raíz + 1 acción preventiva"],
+        deliverable: "Causa raíz documentada + acción preventiva",
+      },
+      {
+        id: "apr_p4", time: "30 min",
+        text: "Documenta el proceso clave del proyecto para que sea replicable por otros",
+        howTo: ["Elige el proceso que más impacta el resultado del proyecto", "Escríbelo en pasos claros y accesibles", "Compártelo con quien lo pueda necesitar"],
+        deliverable: "Proceso clave documentado y disponible para el equipo",
+      },
+    ],
   },
 
   {
     id: "decisiones",
-    title: "Toma de decisiones ágil y efectiva",
+    title: "Toma de decisiones",
     icon: "zap",
     colorBg: "bg-amber-100", colorText: "text-amber-600", colorBar: "bg-amber-500",
     colorDot: "bg-amber-500", colorBorder: "border-amber-200", colorFill: "bg-amber-500",
@@ -323,11 +408,38 @@ const MODULES: PlanModule[] = [
         deliverable: "Comunicación de empoderamiento enviada al líder y al equipo",
       },
     ],
+    actionsP: [
+      {
+        id: "dec_p1", time: "30 min",
+        text: "Toma HOY una decisión del proyecto que llevas más de 3 días postergando",
+        howTo: ["Lista las decisiones del proyecto pendientes", "Elige la más bloqueante y pregúntate: '¿con lo que tengo, puedo decidir?'", "Comunica la decisión a los involucrados con contexto breve"],
+        deliverable: "Decisión del proyecto tomada, documentada y comunicada hoy",
+        questions: ["¿Qué me impide decidir esto?", "¿Qué pasa si no decido esta semana?"],
+      },
+      {
+        id: "dec_p2", time: "30 min",
+        text: "Lista las decisiones del proyecto que dependen de otros y define a quién y cómo escalarlas",
+        howTo: ["Identifica las decisiones fuera de tu alcance directo", "Para cada una: quién decide y qué información necesita", "Escala la más urgente hoy con una recomendación clara"],
+        deliverable: "Mapa de decisiones a escalar con responsable y recomendación",
+      },
+      {
+        id: "dec_p3", time: "Variable",
+        text: "Cierra en máx 24h una consulta pendiente que bloquea el avance del proyecto",
+        howTo: ["Revisa qué respuestas están esperando por ti", "Prioriza la más bloqueante", "Responde con decisión clara y siguiente paso"],
+        deliverable: "Respuesta enviada con decisión y acción resultante",
+      },
+      {
+        id: "dec_p4", time: "20 min",
+        text: "Aplica la regla del 70% en un punto trabado del proyecto: decide sin esperar la info perfecta",
+        howTo: ["Identifica dónde llevas esperando 'más información'", "Evalúa: ¿tengo al menos el 70% de lo necesario?", "Si sí → decide y define qué monitorear luego"],
+        deliverable: "Decisión tomada + nota de qué información seguirás vigilando",
+      },
+    ],
   },
 
   {
     id: "resolucion",
-    title: "Resolución táctico-estratégica de problemas",
+    title: "Resolución de problemas",
     icon: "wrench",
     colorBg: "bg-orange-100", colorText: "text-orange-600", colorBar: "bg-orange-500",
     colorDot: "bg-orange-500", colorBorder: "border-orange-200", colorFill: "bg-orange-500",
@@ -390,11 +502,38 @@ const MODULES: PlanModule[] = [
         deliverable: "Plan de 1 página aprobado y en ejecución",
       },
     ],
+    actionsP: [
+      {
+        id: "res_p1", time: "30 min",
+        text: "Escribe el problema que más frena el proyecto esta semana y aplica '5 Por qués'",
+        howTo: ["Elige el problema que más bloquea el avance", "Pregunta '¿por qué ocurre?' 5 veces seguidas", "Escribe la causa raíz (suele estar en el nivel 4-5)"],
+        deliverable: "Análisis de 5 Por Qués con causa raíz identificada",
+      },
+      {
+        id: "res_p2", time: "20 min",
+        text: "Define 1 solución ejecutable esta semana para la causa raíz del problema del proyecto",
+        howTo: ["La solución debe atacar la causa, no el síntoma", "Debe poder ejecutarse en máx 5 días con los recursos actuales", "Asigna responsable y fecha de verificación"],
+        deliverable: "Solución en ejecución con responsable y fecha de revisión",
+      },
+      {
+        id: "res_p3", time: "20 min",
+        text: "Habla con el involucrado más afectado por el problema y suma su perspectiva",
+        howTo: ["Acércate sin llegar con la solución ya lista", "Pregunta: '¿qué crees que lo genera? ¿qué intentaste ya?'", "Incorpora su perspectiva antes de cerrar la solución"],
+        deliverable: "Perspectiva documentada; solución confirmada o ajustada",
+        questions: ["¿Qué intentaste antes para resolver esto?", "¿Qué necesitarías para que no vuelva a pasar?"],
+      },
+      {
+        id: "res_p4", time: "20 min",
+        text: "Define una señal de alerta temprana para un riesgo del proyecto antes de que escale",
+        howTo: ["Identifica la primera señal visible de que el riesgo aparece", "Define un chequeo semanal (1 pregunta o 1 dato)", "Agenda revisarlo cada semana"],
+        deliverable: "Indicador de alerta temprana definido y agendado",
+      },
+    ],
   },
 
   {
     id: "motivacion",
-    title: "Motivación e innovación",
+    title: "Innovación con propósito",
     icon: "sparkles",
     colorBg: "bg-rose-100", colorText: "text-rose-600", colorBar: "bg-rose-500",
     colorDot: "bg-rose-500", colorBorder: "border-rose-200", colorFill: "bg-rose-500",
@@ -455,6 +594,32 @@ const MODULES: PlanModule[] = [
         text: "Lanza un mini-reto de innovación de 5 días: problema concreto, equipo pequeño, solución rápida",
         howTo: ["Define el problema a resolver (debe ser real y acotado)", "Forma equipos de 2-3 personas voluntarias", "Establece la regla: solución presentable en 5 días laborables"],
         deliverable: "Reto lanzado con descripción del problema, reglas y fecha de presentación",
+      },
+    ],
+    actionsP: [
+      {
+        id: "mot_p1", time: "20 min",
+        text: "Pregunta a los involucrados del proyecto qué mejorarían y captura las ideas",
+        howTo: ["Hazlo en reunión o por chat (formulario anónimo si prefieren)", "No filtres ni juzgues en el momento", "Selecciona 1 idea y ejecútala esta semana"],
+        deliverable: "3+ ideas capturadas + 1 idea implementada",
+      },
+      {
+        id: "mot_p2", time: "5 min",
+        text: "Reconoce públicamente un aporte destacado al proyecto",
+        howTo: ["Sé específico: qué aportó, con qué dificultad, qué impacto tuvo", "Nómbralo en el canal del proyecto", "Relaciónalo con el objetivo del proyecto"],
+        deliverable: "Reconocimiento enviado (guarda el mensaje)",
+      },
+      {
+        id: "mot_p3", time: "Variable",
+        text: "Implementa esta semana UNA idea pequeña propuesta por el equipo del proyecto",
+        howTo: ["Elige la idea más fácil de ejecutar con impacto visible", "Impleméntala y comunica que fue una idea del equipo", "El equipo verá que sus ideas importan"],
+        deliverable: "Idea ejecutada + equipo informado de que fue su iniciativa",
+      },
+      {
+        id: "mot_p4", time: "1h",
+        text: "Lanza un mini-reto de 5 días para resolver un problema acotado del proyecto",
+        howTo: ["Define un problema real y acotado del proyecto", "Forma un equipo de 2-3 voluntarios", "Regla: solución presentable en 5 días laborables"],
+        deliverable: "Reto lanzado con problema, reglas y fecha de presentación",
       },
     ],
   },
@@ -521,6 +686,32 @@ const MODULES: PlanModule[] = [
         text: "Comparte una tendencia del sector con tu equipo y discutan cómo les impacta",
         howTo: ["Elige 1 tendencia relevante (tecnológica, de mercado, regulatoria)", "Preséntala en 5 min y abre el debate: '¿cómo nos impacta esto?'", "Cierra con 1 acción o exploración concreta que el equipo emprenda"],
         deliverable: "Sesión realizada + 1 acción derivada de la tendencia discutida",
+      },
+    ],
+    actionsP: [
+      {
+        id: "vis_p1", time: "20 min",
+        text: "Escribe cómo quieres que esté el proyecto en 30 días y qué depende de ti para lograrlo",
+        howTo: ["3 líneas máx: estado ideal del proyecto en 30 días", "Define 1 acción tuya clave para llegar allá", "Compártelo con tu jefe o con el sponsor del proyecto"],
+        deliverable: "Visión de 30 días del proyecto + 1 acción propia clave",
+      },
+      {
+        id: "vis_p2", time: "30 min",
+        text: "Identifica 1 actividad del proyecto que ya no agrega valor y propón eliminarla o simplificarla",
+        howTo: ["Pregunta: '¿qué hacemos aquí que podríamos dejar de hacer?'", "Evalúa valor vs. costo de esa actividad", "Presenta la propuesta a quien decide esta semana"],
+        deliverable: "Propuesta de simplificación con justificación valor/costo",
+      },
+      {
+        id: "vis_p3", time: "20 min",
+        text: "Pregunta a 2 involucrados qué harían diferente para que el proyecto sea más efectivo",
+        howTo: ["Hazlo en conversaciones individuales informales", "Escucha sin defender el estado actual", "Captura las 2 mejores ideas y evalúa su viabilidad"],
+        deliverable: "2 oportunidades de mejora capturadas con evaluación de viabilidad",
+      },
+      {
+        id: "vis_p4", time: "15 min",
+        text: "Define 1 cosa que harás diferente esta semana en cómo coordinas el proyecto",
+        howTo: ["Piensa en tu forma de coordinar: ¿qué hábito cambiar?", "Escríbelo como compromiso concreto y compártelo con alguien", "Al cierre de semana: ¿lo hiciste?, ¿qué pasó?"],
+        deliverable: "Nuevo hábito de coordinación documentado y ejecutado",
       },
     ],
   },
@@ -678,8 +869,10 @@ function ActionCard({ action, mod, actionsData, onUpdate }: {
 
 export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
   const level: LeaderLevel = getLeaderLevel(leader.name)
+  const type: LeaderType = getLeaderType(leader.name)
   const levelLabel = LEVEL_LABELS[level]
   const levelColors = LEVEL_COLORS[level]
+  const typeColors = TYPE_COLORS[type]
 
   const [actionsData, setActionsData] = useState<Record<string, ActionData>>({})
   const [expandedModule, setExpandedModule] = useState<string | null>(null)
@@ -690,9 +883,15 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
   const [topicAverages, setTopicAverages] = useState<Record<string, { avg: number; count: number }>>({})
   const [showAll, setShowAll] = useState(false)
 
-  // Acciones según nivel del líder
-  const getActions = (mod: PlanModule): PlanAction[] =>
-    level === "estrategico" ? mod.actionsE : mod.actionsT
+  // Acciones según nivel + tipo del líder:
+  //  - Estratégico            → actionsE
+  //  - Táctico + líder formal  → actionsT (tareas con equipo a cargo)
+  //  - Táctico + líder proceso → actionsP (tareas de líder de proyecto)
+  const getActions = (mod: PlanModule): PlanAction[] => {
+    if (level === "estrategico") return mod.actionsE
+    if (type === "proceso") return mod.actionsP
+    return mod.actionsT
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -760,7 +959,7 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
     } else {
       setSyncError(true)
     }
-  }, [leader.id, actionsData, level])
+  }, [leader.id, actionsData, level, type])
 
   const modulesWithScore = MODULES.map((mod) => {
     const key = normalizeText(mod.title)
@@ -820,11 +1019,14 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${levelColors.badge}`}>
                 {levelLabel}
               </span>
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${typeColors.badge}`}>
+                {TYPE_LABELS_SHORT[type]}
+              </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
               {hasAnyFollowupData
                 ? `Plan personalizado · ${visibleModules.length} de ${MODULES.length} competencias a trabajar`
-                : `Plan ${level === "estrategico" ? "estratégico" : "táctico"} · 7 competencias · acciones de impacto rápido`}
+                : `Plan ${level === "estrategico" ? "estratégico" : type === "proceso" ? "táctico · líder de proyecto" : "táctico · con equipo"} · 7 competencias · acciones de impacto rápido`}
             </p>
           </div>
         </div>
@@ -997,6 +1199,18 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
 
             {isOpen && (
               <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3 bg-gray-50">
+                {(() => {
+                  const comp = findCompetency(mod.title)
+                  if (!comp || comp.pending) return null
+                  return (
+                    <div className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                        Definición de la competencia
+                      </p>
+                      <p className="text-xs text-gray-600 leading-relaxed">{comp.definition}</p>
+                    </div>
+                  )
+                })()}
                 {actions.map((action) => (
                   <ActionCard
                     key={action.id}

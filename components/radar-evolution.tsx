@@ -17,13 +17,13 @@ interface RadarEvolutionProps {
 }
 
 const DIMENSIONS = [
-  "Liderazgo cercano",
-  "Resolución táctico-estratégica de problemas",
+  "Liderazgo consciente",
+  "Resolución de problemas",
   "Visión transformadora",
-  "Toma de decisiones ágil y efectiva",
+  "Toma de decisiones",
   "Cultura de aprendizaje",
   "Comunicación",
-  "Motivación e innovación",
+  "Innovación con propósito",
 ]
 
 // Colores vibrantes para las sesiones

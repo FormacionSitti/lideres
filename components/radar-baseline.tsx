@@ -22,16 +22,16 @@ import {
 const DIMENSIONS = [
   {
     key: "liderazgo_cercano",
-    label: "Liderazgo cercano",
-    aliases: ["liderazgo cercano", "liderazgo"],
+    label: "Liderazgo consciente",
+    aliases: ["liderazgo consciente", "liderazgo cercano", "liderazgo"],
   },
   {
     key: "resolucion_problemas",
-    label: "Resolución táctico-estratégica de problemas",
+    label: "Resolución de problemas",
     aliases: [
+      "resolucion de problemas",
       "resolucion tactico-estrategica de problemas",
       "resolucion tactico estrategica de problemas",
-      "resolucion de problemas",
       "resolucion problemas",
     ],
   },
@@ -42,10 +42,10 @@ const DIMENSIONS = [
   },
   {
     key: "toma_decisiones",
-    label: "Toma de decisiones ágil y efectiva",
+    label: "Toma de decisiones",
     aliases: [
-      "toma de decisiones agil y efectiva",
       "toma de decisiones",
+      "toma de decisiones agil y efectiva",
       "decisiones",
     ],
   },
@@ -61,8 +61,8 @@ const DIMENSIONS = [
   },
   {
     key: "motivacion_innovacion",
-    label: "Motivación e innovación",
-    aliases: ["motivacion e innovacion", "motivacion innovacion", "innovacion"],
+    label: "Innovación con propósito",
+    aliases: ["innovacion con proposito", "motivacion e innovacion", "motivacion innovacion", "innovacion"],
   },
 ] as const
 
@@ -94,14 +94,14 @@ function matchDimensionKey(label: string): DimensionKey | null {
 
 const DIMENSION_LABELS = DIMENSIONS.map((d) => d.label)
 
-const COLOR_INITIAL = "#f59e0b" // amber - punto de partida (autoevaluacion)
-const COLOR_AVG = "#2563eb" // azul - promedio actual de seguimientos
-const COLOR_FINAL = "#16a34a" // verde - radar final (cierre)
+const COLOR_INITIAL = "#f59e0b" // amber - autoevaluación inicial
+const COLOR_ACOMP = "#2563eb" // azul - radar de acompañamiento (promedio de seguimientos)
+const COLOR_FINAL = "#7c3aed" // violeta - radar final (evaluación de cierre manual)
 
 interface AssessmentRow {
   id: string
   leader_id: number
-  assessment_type: "initial" | "final"
+  assessment_type: "initial" | "final" | "closing"
   liderazgo_cercano: number | null
   resolucion_problemas: number | null
   vision_transformadora: number | null
@@ -179,12 +179,18 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
   const [tableMissing, setTableMissing] = useState(false)
   const [initialAssessment, setInitialAssessment] = useState<AssessmentRow | null>(null)
   const [finalAssessment, setFinalAssessment] = useState<AssessmentRow | null>(null)
+  const [closingAssessment, setClosingAssessment] = useState<AssessmentRow | null>(null)
   const [showInitialForm, setShowInitialForm] = useState(false)
   const [savingInitial, setSavingInitial] = useState(false)
   const [finalizing, setFinalizing] = useState(false)
   const [reopening, setReopening] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm())
   const [notes, setNotes] = useState("")
+  // Radar Final manual (evaluación de cierre)
+  const [showClosingForm, setShowClosingForm] = useState(false)
+  const [savingClosing, setSavingClosing] = useState(false)
+  const [closingForm, setClosingForm] = useState<FormState>(emptyForm())
+  const [closingNotes, setClosingNotes] = useState("")
 
   const fetchAssessments = async () => {
     setLoading(true)
@@ -202,8 +208,11 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
         setTableMissing(true)
         setInitialAssessment(null)
         setFinalAssessment(null)
+        setClosingAssessment(null)
         setForm(emptyForm())
         setNotes("")
+        setClosingForm(emptyForm())
+        setClosingNotes("")
         return
       }
       if (!res.ok) {
@@ -213,10 +222,14 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
       const list = json?.data || []
       const initial = list.find((a: AssessmentRow) => a.assessment_type === "initial") || null
       const final = list.find((a: AssessmentRow) => a.assessment_type === "final") || null
+      const closing = list.find((a: AssessmentRow) => a.assessment_type === "closing") || null
       setInitialAssessment(initial)
       setFinalAssessment(final)
+      setClosingAssessment(closing)
       setForm(rowToForm(initial))
       setNotes(initial?.notes || "")
+      setClosingForm(rowToForm(closing))
+      setClosingNotes(closing?.notes || "")
     } catch (error: any) {
       console.error("[v0] Error obteniendo autoevaluaciones:", error)
       toast({
@@ -308,6 +321,71 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
     }
   }
 
+  // Guardar el Radar Final manual (evaluación de cierre)
+  const handleSaveClosing = async () => {
+    const payload: Record<string, number | null | string | undefined> = {
+      leader_id: leaderId,
+      assessment_type: "closing",
+      notes: closingNotes || null,
+    }
+    let hasAtLeastOne = false
+    for (const d of DIMENSIONS) {
+      const raw = closingForm[d.key]
+      if (raw.trim() === "") {
+        payload[d.key] = null
+        continue
+      }
+      const n = validateValue(raw)
+      if (n === null) {
+        toast({
+          title: "Valor inválido",
+          description: `${d.label} debe ser un número entre 1 y 5.`,
+          variant: "destructive",
+        })
+        return
+      }
+      payload[d.key] = n
+      hasAtLeastOne = true
+    }
+
+    if (!hasAtLeastOne) {
+      toast({
+        title: "Faltan datos",
+        description: "Ingresa al menos una calificación de la evaluación final.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSavingClosing(true)
+    try {
+      const res = await fetch("/api/supabase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "saveLeaderAssessment", data: payload }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Error al guardar la evaluación final")
+      }
+      toast({
+        title: "Radar Final guardado",
+        description: "La evaluación final de cierre se ha registrado.",
+      })
+      setShowClosingForm(false)
+      await fetchAssessments()
+    } catch (error: any) {
+      console.error("[v0] Error guardando radar final:", error)
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setSavingClosing(false)
+    }
+  }
+
   const handleFinalize = async () => {
     if (averageData.length === 0) {
       toast({
@@ -319,7 +397,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
     }
 
     const confirmed = window.confirm(
-      "¿Estás seguro de finalizar el proceso de seguimientos? Esto creará el Radar Final con los promedios actuales.",
+      "¿Estás seguro de cerrar el acompañamiento? Esto creará el Radar de Acompañamiento con los promedios actuales.",
     )
     if (!confirmed) return
 
@@ -374,8 +452,8 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
       }
       const okMsg =
         unmatched.length > 0
-          ? `Radar Final generado con ${matchedCount}/7 dimensiones. ${unmatched.length} tema(s) no se pudieron mapear.`
-          : `Radar Final generado con las ${matchedCount} dimensiones evaluadas.`
+          ? `Radar de Acompañamiento generado con ${matchedCount}/7 dimensiones. ${unmatched.length} tema(s) no se pudieron mapear.`
+          : `Radar de Acompañamiento generado con las ${matchedCount} dimensiones evaluadas.`
       toast({
         title: "Proceso finalizado",
         description: okMsg,
@@ -395,7 +473,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
 
   const handleReopen = async () => {
     const confirmed = window.confirm(
-      "¿Reabrir el proceso? Esto eliminará el Radar Final actual. La autoevaluación inicial se conservará.",
+      "¿Reabrir el proceso? Esto eliminará el Radar de Acompañamiento actual. La autoevaluación inicial y el Radar Final manual se conservarán.",
     )
     if (!confirmed) return
 
@@ -444,26 +522,36 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
 
     if (finalAssessment) {
       result.push({
-        label: "Radar Final",
+        label: "Radar de Acompañamiento",
         // Si una dimension no fue medida en seguimientos, usar el valor del
         // Radar Inicial como fallback visual para mantener el poligono coherente.
         data: rowToRadarData(finalAssessment, initialAssessment),
-        color: COLOR_FINAL,
+        color: COLOR_ACOMP,
       })
     } else if (averageData.length > 0) {
       // Mientras el proceso este en curso, mostrar el promedio dinamico
       result.push({
-        label: "Radar Promedio",
+        label: "Radar de Acompañamiento",
         data: averageData.map((d) => ({ dimension: d.label, value: d.value })),
-        color: COLOR_AVG,
+        color: COLOR_ACOMP,
+      })
+    }
+
+    // Tercer radar: evaluación final manual (cierre)
+    if (closingAssessment) {
+      result.push({
+        label: "Radar Final",
+        data: rowToRadarData(closingAssessment),
+        color: COLOR_FINAL,
       })
     }
 
     return result
-  }, [initialAssessment, finalAssessment, averageData])
+  }, [initialAssessment, finalAssessment, closingAssessment, averageData])
 
   const initialAvg = avgOfRow(initialAssessment)
   const finalAvg = avgOfRow(finalAssessment)
+  const closingAvg = avgOfRow(closingAssessment)
   const currentAvg =
     averageData.length > 0
       ? averageData.reduce((s, d) => s + d.value, 0) / averageData.length
@@ -471,24 +559,28 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
 
   const isFinalized = !!finalAssessment
 
-  // Mostrar evolucion inicial vs final
+  // Evolución: inicial · acompañamiento · final (cierre manual)
   const evolutionRows = useMemo(() => {
-    if (!initialAssessment || !finalAssessment) return []
+    if (!initialAssessment || (!finalAssessment && !closingAssessment)) return []
     return DIMENSIONS.map((d) => {
       const initial = initialAssessment[d.key]
-      const final = finalAssessment[d.key]
+      const acomp = finalAssessment ? finalAssessment[d.key] : null
+      const closing = closingAssessment ? closingAssessment[d.key] : null
+      // El cambio se calcula contra el radar final si existe, si no, contra el de acompañamiento
+      const endVal = closing ?? acomp
       const change =
-        initial !== null && initial !== undefined && final !== null && final !== undefined
-          ? Number(final) - Number(initial)
+        initial !== null && initial !== undefined && endVal !== null && endVal !== undefined
+          ? Number(endVal) - Number(initial)
           : null
       return {
         label: d.label,
         initial,
-        final,
+        acomp,
+        closing,
         change,
       }
     })
-  }, [initialAssessment, finalAssessment])
+  }, [initialAssessment, finalAssessment, closingAssessment])
 
   if (loading) {
     return (
@@ -534,7 +626,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
             </h3>
             <p className="text-sm text-gray-500">
               {isFinalized
-                ? "Proceso finalizado: comparación entre la autoevaluación inicial y el resultado final"
+                ? "Comparación de radares: inicial, acompañamiento y final"
                 : initialAssessment
                   ? "Autoevaluación inicial vs. promedio actual de seguimientos"
                   : "Promedio actual de seguimientos. Ingresa la autoevaluación inicial para comparar."}
@@ -572,16 +664,23 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               )}
               {!isFinalized && currentAvg !== null && (
                 <LegendBadge
-                  color={COLOR_AVG}
-                  label="Radar Promedio"
+                  color={COLOR_ACOMP}
+                  label="Radar de Acompañamiento"
                   detail={`En curso · Prom: ${currentAvg.toFixed(1)}`}
                 />
               )}
               {finalAssessment && (
                 <LegendBadge
+                  color={COLOR_ACOMP}
+                  label="Radar de Acompañamiento"
+                  detail={finalAvg !== null ? `Seguimientos · Prom: ${finalAvg.toFixed(1)}` : "Seguimientos"}
+                />
+              )}
+              {closingAssessment && (
+                <LegendBadge
                   color={COLOR_FINAL}
                   label="Radar Final"
-                  detail={finalAvg !== null ? `Cierre · Prom: ${finalAvg.toFixed(1)}` : "Cierre"}
+                  detail={closingAvg !== null ? `Cierre · Prom: ${closingAvg.toFixed(1)}` : "Cierre"}
                 />
               )}
             </div>
@@ -601,7 +700,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               return (
                 <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 max-w-md text-center">
                   En {inheritedCount} {inheritedCount === 1 ? "dimensión" : "dimensiones"} no hubo
-                  seguimientos calificados; el Radar Final muestra el valor del Radar Inicial para
+                  seguimientos calificados; el Radar de Acompañamiento muestra el valor del Radar Inicial para
                   esas dimensiones.
                 </p>
               )
@@ -660,14 +759,14 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900">
-                  {isFinalized ? "Radar Final generado" : "Finalizar seguimientos"}
+                  {isFinalized ? "Radar de Acompañamiento generado" : "Cerrar acompañamiento"}
                 </h4>
                 <p className="text-xs text-gray-500">
                   {isFinalized
-                    ? `Snapshot del cierre · Promedio ${finalAvg?.toFixed(1) ?? "-"}/5`
+                    ? `Promedio de seguimientos · ${finalAvg?.toFixed(1) ?? "-"}/5`
                     : currentAvg !== null
-                      ? `Generará el Radar Final con el promedio actual (${currentAvg.toFixed(1)}/5).`
-                      : "Registra al menos un seguimiento para poder finalizar."}
+                      ? `Generará el Radar de Acompañamiento con el promedio actual (${currentAvg.toFixed(1)}/5).`
+                      : "Registra al menos un seguimiento para poder cerrar el acompañamiento."}
                 </p>
               </div>
             </div>
@@ -692,12 +791,115 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
                 ) : (
                   <Flag className="w-4 h-4 mr-2" />
                 )}
-                Finalizar y generar Radar Final
+                Cerrar y generar Radar de Acompañamiento
               </Button>
             )}
           </div>
+
+          {/* Bloque Radar Final manual (evaluación de cierre) */}
+          <div className="border-t pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0">
+                <Flag className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">Radar Final (evaluación de cierre)</h4>
+                <p className="text-xs text-gray-500">
+                  {closingAssessment
+                    ? `Evaluación final registrada · Promedio ${closingAvg?.toFixed(1) ?? "-"}/5`
+                    : "Evaluación final manual del líder al terminar el proceso (escala 1 a 5)."}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setClosingForm(rowToForm(closingAssessment))
+                setClosingNotes(closingAssessment?.notes || "")
+                setShowClosingForm((s) => !s)
+              }}
+            >
+              <Edit3 className="w-4 h-4 mr-2" />
+              {closingAssessment ? "Editar Radar Final" : "Ingresar Radar Final"}
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {/* Formulario Radar Final manual */}
+      {showClosingForm && (
+        <Card className="p-6 border-violet-200 bg-violet-50/40">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0">
+              <Flag className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">
+                {closingAssessment ? "Editar Radar Final" : "Nuevo Radar Final"}
+              </h4>
+              <p className="text-xs text-gray-500">
+                Evaluación final de cierre en cada competencia (escala 1 a 5). Se muestra en violeta junto a los otros radares.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {DIMENSIONS.map((d) => (
+              <div key={d.key} className="space-y-1.5">
+                <Label htmlFor={`close-${d.key}`} className="text-sm">
+                  {d.label}
+                </Label>
+                <Input
+                  id={`close-${d.key}`}
+                  type="number"
+                  min={1}
+                  max={5}
+                  step={0.1}
+                  inputMode="decimal"
+                  placeholder="1.0 - 5.0"
+                  value={closingForm[d.key]}
+                  onChange={(e) => setClosingForm({ ...closingForm, [d.key]: e.target.value })}
+                  className="bg-white"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-1.5 mb-4">
+            <Label htmlFor="close-notes" className="text-sm">
+              Notas (opcional)
+            </Label>
+            <Textarea
+              id="close-notes"
+              placeholder="Conclusiones del cierre, evidencias, comentarios finales..."
+              value={closingNotes}
+              onChange={(e) => setClosingNotes(e.target.value)}
+              className="bg-white"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowClosingForm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveClosing}
+              disabled={savingClosing}
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {savingClosing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Guardar Radar Final
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Formulario autoevaluacion inicial */}
       {showInitialForm && (
@@ -782,7 +984,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-semibold text-gray-900">Detalle del Radar Final</h4>
+              <h4 className="font-semibold text-gray-900">Detalle del Radar de Acompañamiento</h4>
               <p className="text-xs text-gray-500">
                 Promedio del cierre: <strong>{finalAvg !== null ? finalAvg.toFixed(2) : "-"}/5</strong>
                 {" · "}
@@ -847,29 +1049,29 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
         </Card>
       )}
 
-      {/* Comparativo Inicial vs Final */}
-      {isFinalized && evolutionRows.length > 0 && (
+      {/* Comparativo Inicial · Acompañamiento · Final */}
+      {evolutionRows.length > 0 && (
         <Card className="p-6 overflow-x-auto">
-          <h4 className="font-semibold text-gray-900 mb-4">Evolución: Inicial vs Final</h4>
+          <h4 className="font-semibold text-gray-900 mb-4">Evolución: Inicial · Acompañamiento · Final</h4>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="text-left py-3 px-3 font-semibold">Competencia</th>
                 <th className="text-center py-3 px-3 font-semibold">
                   <span className="inline-flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: COLOR_INITIAL }}
-                    />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLOR_INITIAL }} />
                     Inicial
                   </span>
                 </th>
                 <th className="text-center py-3 px-3 font-semibold">
                   <span className="inline-flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: COLOR_FINAL }}
-                    />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLOR_ACOMP }} />
+                    Acompañamiento
+                  </span>
+                </th>
+                <th className="text-center py-3 px-3 font-semibold">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLOR_FINAL }} />
                     Final
                   </span>
                 </th>
@@ -880,9 +1082,7 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               {evolutionRows.map((row) => {
                 const change = row.change
                 const formatted =
-                  row.initial !== null && row.final !== null && change !== null
-                    ? `${change > 0 ? "+" : ""}${change.toFixed(1)}`
-                    : "-"
+                  change !== null ? `${change > 0 ? "+" : ""}${change.toFixed(1)}` : "-"
                 const changeClass =
                   change === null
                     ? "bg-gray-100 text-gray-500"
@@ -895,15 +1095,16 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
                   <tr key={row.label} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="py-3 px-3 text-gray-700 font-medium">{row.label}</td>
                     <td className="text-center py-3 px-3 text-gray-700">
-                      {row.initial !== null ? Number(row.initial).toFixed(1) : "-"}
+                      {row.initial !== null && row.initial !== undefined ? Number(row.initial).toFixed(1) : "-"}
                     </td>
                     <td className="text-center py-3 px-3 text-gray-700">
-                      {row.final !== null ? Number(row.final).toFixed(1) : "-"}
+                      {row.acomp !== null && row.acomp !== undefined ? Number(row.acomp).toFixed(1) : "-"}
+                    </td>
+                    <td className="text-center py-3 px-3 text-gray-700">
+                      {row.closing !== null && row.closing !== undefined ? Number(row.closing).toFixed(1) : "-"}
                     </td>
                     <td className="text-center py-3 px-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${changeClass}`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${changeClass}`}>
                         {formatted}
                       </span>
                     </td>
@@ -912,6 +1113,9 @@ export function RadarBaseline({ leaderId, leaderName, averageData }: RadarBaseli
               })}
             </tbody>
           </table>
+          <p className="text-xs text-gray-400 mt-3">
+            El cambio se calcula frente al Radar Final si existe; de lo contrario, frente al Radar de Acompañamiento.
+          </p>
         </Card>
       )}
     </div>

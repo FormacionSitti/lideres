@@ -3,17 +3,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Topic } from "@/lib/types"
-
-// Descripciones de cada dimensión del Radar Táctico-Estratégico
-const topicDescriptions: Record<string, string> = {
-  "Liderazgo cercano": "Mide la gestión del líder con el equipo: accesibilidad, claridad en prioridades, seguimiento y retroalimentación.",
-  "Resolución táctico-estratégica de problemas": "Mide la capacidad de resolver problemas estructurales: análisis de causas raíz, soluciones sostenibles y acción preventiva.",
-  "Visión transformadora": "Mide la capacidad de evolucionar y mejorar: proponer mejoras, cuestionar prácticas, impulsar innovación.",
-  "Toma de decisiones ágil y efectiva": "Mide la rapidez y criterio en decisiones: oportunidad, evitar retrasos, claridad y criterio.",
-  "Cultura de aprendizaje": "Mide el aprendizaje a nivel de equipo: promover aprendizaje, compartir conocimientos, espacios de mejora.",
-  "Comunicación": "Mide la alineación estratégica del equipo: claridad en prioridades, decisiones a tiempo, retroalimentación.",
-  "Motivación e innovación": "Mide la capacidad de inspirar y transformar: ideas innovadoras, motivación, impulso al cambio.",
-}
+import { findCompetency } from "@/lib/competencies"
 
 // Escala de calificación con descripciones
 const ratingDescriptions: Record<number, string> = {
@@ -33,7 +23,8 @@ interface TopicRatingProps {
 }
 
 export function TopicRating({ topic, selected, rating, onSelectChange, onRatingChange }: TopicRatingProps) {
-  const description = topicDescriptions[topic.name] || ""
+  const competency = findCompetency(topic.name)
+  const description = competency && !competency.pending ? competency.definition : ""
 
   return (
     <div className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50 border border-transparent hover:border-blue-200 transition-colors">
@@ -48,7 +39,13 @@ export function TopicRating({ topic, selected, rating, onSelectChange, onRatingC
           {topic.name}
         </Label>
         {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">{description}</p>
+        )}
+        {selected && competency?.whyMatters && (
+          <p className="text-xs text-blue-700 mt-2 bg-blue-50 border border-blue-100 rounded-md px-2.5 py-1.5 leading-relaxed">
+            <span className="font-semibold">Por qué importa en Sitti: </span>
+            {competency.whyMatters}
+          </p>
         )}
         {selected && (
           <div className="mt-3">
