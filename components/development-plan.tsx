@@ -71,9 +71,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-blue-500", colorBorder: "border-blue-200", colorFill: "bg-blue-500",
     objective: "Construir presencia, escucha activa y vínculo de confianza con cada integrante del equipo.",
     sittiCourses: [
-      { title: "Liderazgo Situacional", description: "Adapta tu estilo al nivel de madurez de cada colaborador.", url: "https://talentositti.com/cursos/liderazgo-situacional", duration: "4h" },
-      { title: "Escucha Activa y Empatía", description: "Escucha con intención para fortalecer vínculos de confianza.", url: "https://talentositti.com/cursos/escucha-activa-empatia", duration: "2h" },
-      { title: "Feedback Efectivo", description: "Da y recibe retroalimentación constructiva que impulse el desempeño.", url: "https://talentositti.com/cursos/feedback-efectivo", duration: "3h" },
+      { title: "Liderazgo Situacional", description: "Adapta tu estilo al nivel de madurez de cada colaborador.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
+      { title: "Escucha Activa y Empatía", description: "Escucha con intención para fortalecer vínculos de confianza.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
+      { title: "Feedback Efectivo", description: "Da y recibe retroalimentación constructiva que impulse el desempeño.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
     ],
     actionsT: [
       {
@@ -165,9 +165,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-cyan-500", colorBorder: "border-cyan-200", colorFill: "bg-cyan-500",
     objective: "Asegurar que todos comparten el mismo norte y entienden su rol en el resultado.",
     sittiCourses: [
-      { title: "Comunicación Asertiva", description: "Expresa ideas con claridad y confianza sin generar conflicto.", url: "https://talentositti.com/cursos/comunicacion-asertiva", duration: "3h" },
-      { title: "Storytelling para Líderes", description: "Comunica la visión de forma que inspire y movilice equipos.", url: "https://talentositti.com/cursos/storytelling-lideres", duration: "2h" },
-      { title: "Reuniones Efectivas", description: "Facilita reuniones con propósito, acuerdos y seguimiento real.", url: "https://talentositti.com/cursos/reuniones-efectivas", duration: "2h" },
+      { title: "Comunicación Asertiva", description: "Expresa ideas con claridad y confianza sin generar conflicto.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
+      { title: "Storytelling para Líderes", description: "Comunica la visión de forma que inspire y movilice equipos.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
+      { title: "Reuniones Efectivas", description: "Facilita reuniones con propósito, acuerdos y seguimiento real.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
     ],
     actionsT: [
       {
@@ -259,9 +259,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-green-500", colorBorder: "border-green-200", colorFill: "bg-green-500",
     objective: "Convertir cada experiencia y error en conocimiento útil para el equipo.",
     sittiCourses: [
-      { title: "Mentoría y Coaching de Equipos", description: "Herramientas para acompañar el aprendizaje continuo.", url: "https://talentositti.com/cursos/mentoria-coaching-equipos", duration: "4h" },
-      { title: "Gestión del Conocimiento", description: "Crea sistemas para capturar y compartir aprendizaje.", url: "https://talentositti.com/cursos/gestion-del-conocimiento", duration: "3h" },
-      { title: "Aprendizaje Ágil", description: "Desarrolla la capacidad de aprender y adaptarse rápido.", url: "https://talentositti.com/cursos/aprendizaje-agil", duration: "2h" },
+      { title: "Mentoría y Coaching de Equipos", description: "Herramientas para acompañar el aprendizaje continuo.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
+      { title: "Gestión del Conocimiento", description: "Crea sistemas para capturar y compartir aprendizaje.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
+      { title: "Aprendizaje Ágil", description: "Desarrolla la capacidad de aprender y adaptarse rápido.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
     ],
     actionsT: [
       {
@@ -351,9 +351,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-amber-500", colorBorder: "border-amber-200", colorFill: "bg-amber-500",
     objective: "Decidir mejor y más rápido sin sacrificar calidad ni alineación.",
     sittiCourses: [
-      { title: "Pensamiento Crítico para Líderes", description: "Evalúa alternativas y decide con claridad y criterio.", url: "https://talentositti.com/cursos/pensamiento-critico-lideres", duration: "4h" },
-      { title: "Delegación Efectiva", description: "Delega con confianza asignando decisiones al nivel correcto.", url: "https://talentositti.com/cursos/delegacion-efectiva", duration: "2h" },
-      { title: "Agilidad en la Toma de Decisiones", description: "Frameworks para decidir rápido con información incompleta.", url: "https://talentositti.com/cursos/agilidad-decisiones", duration: "3h" },
+      { title: "Pensamiento Crítico para Líderes", description: "Evalúa alternativas y decide con claridad y criterio.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
+      { title: "Delegación Efectiva", description: "Delega con confianza asignando decisiones al nivel correcto.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
+      { title: "Agilidad en la Toma de Decisiones", description: "Frameworks para decidir rápido con información incompleta.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
     ],
     actionsT: [
       {
@@ -445,9 +445,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-orange-500", colorBorder: "border-orange-200", colorFill: "bg-orange-500",
     objective: "Atacar las causas raíz y diseñar soluciones sistémicas, no parches.",
     sittiCourses: [
-      { title: "Resolución de Conflictos", description: "Aborda conflictos de forma constructiva con soluciones duraderas.", url: "https://talentositti.com/cursos/resolucion-conflictos", duration: "3h" },
-      { title: "Design Thinking Aplicado", description: "Metodología centrada en personas para resolver problemas complejos.", url: "https://talentositti.com/cursos/design-thinking", duration: "5h" },
-      { title: "Pensamiento Sistémico", description: "Analiza dinámicas del sistema para resolver problemas de raíz.", url: "https://talentositti.com/cursos/pensamiento-sistemico", duration: "4h" },
+      { title: "Resolución de Conflictos", description: "Aborda conflictos de forma constructiva con soluciones duraderas.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
+      { title: "Design Thinking Aplicado", description: "Metodología centrada en personas para resolver problemas complejos.", url: "https://talentositti.buk.co/static_pages/portal", duration: "5h" },
+      { title: "Pensamiento Sistémico", description: "Analiza dinámicas del sistema para resolver problemas de raíz.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
     ],
     actionsT: [
       {
@@ -539,9 +539,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-rose-500", colorBorder: "border-rose-200", colorFill: "bg-rose-500",
     objective: "Activar la energía del equipo y abrir espacios para nuevas ideas.",
     sittiCourses: [
-      { title: "Inteligencia Emocional para Líderes", description: "Gestiona emociones para inspirar y motivar a tu equipo.", url: "https://talentositti.com/cursos/inteligencia-emocional-lideres", duration: "4h" },
-      { title: "Innovación y Creatividad en el Trabajo", description: "Técnicas para estimular ideas disruptivas en equipos.", url: "https://talentositti.com/cursos/innovacion-creatividad", duration: "3h" },
-      { title: "Propósito y Motivación de Equipos", description: "Conecta al equipo con el propósito para aumentar el compromiso.", url: "https://talentositti.com/cursos/proposito-motivacion", duration: "2h" },
+      { title: "Inteligencia Emocional para Líderes", description: "Gestiona emociones para inspirar y motivar a tu equipo.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
+      { title: "Innovación y Creatividad en el Trabajo", description: "Técnicas para estimular ideas disruptivas en equipos.", url: "https://talentositti.buk.co/static_pages/portal", duration: "3h" },
+      { title: "Propósito y Motivación de Equipos", description: "Conecta al equipo con el propósito para aumentar el compromiso.", url: "https://talentositti.buk.co/static_pages/portal", duration: "2h" },
     ],
     actionsT: [
       {
@@ -632,9 +632,9 @@ const MODULES: PlanModule[] = [
     colorDot: "bg-indigo-500", colorBorder: "border-indigo-200", colorFill: "bg-indigo-500",
     objective: "Anticipar el futuro del área y guiar al equipo hacia un estado superior de desempeño.",
     sittiCourses: [
-      { title: "Liderazgo Transformacional", description: "Desarrolla habilidades para liderar procesos de cambio.", url: "https://talentositti.com/cursos/liderazgo-transformacional", duration: "5h" },
-      { title: "Gestión del Cambio", description: "Guía al equipo en transiciones organizacionales con menos resistencia.", url: "https://talentositti.com/cursos/gestion-del-cambio", duration: "4h" },
-      { title: "Planeación Estratégica", description: "Define objetivos de largo plazo y planes alineados a la visión.", url: "https://talentositti.com/cursos/planeacion-estrategica", duration: "4h" },
+      { title: "Liderazgo Transformacional", description: "Desarrolla habilidades para liderar procesos de cambio.", url: "https://talentositti.buk.co/static_pages/portal", duration: "5h" },
+      { title: "Gestión del Cambio", description: "Guía al equipo en transiciones organizacionales con menos resistencia.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
+      { title: "Planeación Estratégica", description: "Define objetivos de largo plazo y planes alineados a la visión.", url: "https://talentositti.buk.co/static_pages/portal", duration: "4h" },
     ],
     actionsT: [
       {
@@ -1233,7 +1233,7 @@ export default function DevelopmentPlan({ leader }: DevelopmentPlanProps) {
                     <div className="space-y-2">
                       {mod.sittiCourses.map((course) => (
                         <a
-                          key={course.url}
+                          key={course.title}
                           href={course.url}
                           target="_blank"
                           rel="noopener noreferrer"
